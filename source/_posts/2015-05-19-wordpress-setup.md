@@ -2,7 +2,7 @@
 title: WordPress搭建历程
 layout: post
 tag: tool
-categories: other
+categories: tool
 ---
 记录一下搭建wordpress博客的过程，做备忘之用，仅供参考。
 

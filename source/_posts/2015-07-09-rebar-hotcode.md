@@ -2,7 +2,7 @@
 title: rebar的热更
 layout: post
 tags: erlnag
-tags: erlang
+categories: erlang
 ---
 
 由于项目开发中早早地用到了[rebar][rebar]，虽然rebar在很多方面都比自己构建原生OTP应用更方便，但是每一次修改，都需要重新编译，发布，启动，非常耗费时间，而rebar本身的[upgrade][rebar upgrade]又比较麻烦，是针对于版本发布的，不适合开发测试使用。

@@ -1,7 +1,13 @@
 deploy:
 	hexo generate
-	hexo deploy
 	cp -r source/assets public/
+	cp source/CNAME public/
+	hexo deploy
+
+server:
+	hexo generate
+	cp -r source/assets public/
+	hexo server
 
 theme:
-	git clone https://github.com/wudaijun/Hexo-theme-light_cn themes/light_cn
+	git clone https://github.com/wudaijun/Hexo-theme-light_cn themes/light-cn
