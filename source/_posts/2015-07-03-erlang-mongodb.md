@@ -7,7 +7,6 @@ categories: erlang
 
 erlang mongodb驱动地址: https://github.com/comtihon/mongodb-erlang
 
-<!--more-->
 
 **1. 存取**
 
@@ -18,6 +17,8 @@ erlang mongodb驱动地址: https://github.com/comtihon/mongodb-erlang
 	 					
 	mongo:insert(Connection, Collection, {key1, value1})        % OK
 	mongo:insert(Connection, Collection, {<<"key1"">>, value1}) % OK
+
+<!--more-->
 	
 其次，我们在存List作为Value时，实际上存入mongodb的是一个整数数组：
 

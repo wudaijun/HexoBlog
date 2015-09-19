@@ -2,7 +2,7 @@
 layout: post
 title: skynet socketserver
 categories:
-- GameServer
+- gameserver
 tags:
 - lua
 - skynet

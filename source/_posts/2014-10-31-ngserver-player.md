@@ -2,7 +2,7 @@
 layout: post
 title: NGServer Session -> Player
 categories:
-- GameServer
+- gameserver
 tags:
 - NGServer
 ---

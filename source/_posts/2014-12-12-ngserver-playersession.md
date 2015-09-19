@@ -2,12 +2,12 @@
 layout: post
 title: NGServer 加入PlayerSession
 categories:
-- GameServer
+- gameserver
 tags:
 - NGServer
 ---
 
-##PlayerSession类
+## PlayerSession类
 
 在之前的网络底层设计中，Player和Session之间通过组合实现弱关联，但仍然有个诟病：Player类和Session类在网络连接到来时一并创建了。这样后面在做断线重连的时候，会有两个Player。而事实上LoginService只管登录认证，登录认证的时候并不需要创建Player类，因此可以延迟Player的创建，将其放在MapService中。而这之前LoginService的登录认证也需要用户的一些基本信息。基于这些，实现了PlayerSession类：
 

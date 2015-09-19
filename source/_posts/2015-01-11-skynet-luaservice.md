@@ -2,7 +2,7 @@
 layout: post
 title: skynet lua服务
 categories:
-- GameServer
+- gameserver
 tags:
 - lua
 - skynet

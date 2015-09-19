@@ -5,7 +5,7 @@ categories:
 - c/c++
 tags:
 - c/c++
-- shared_ptr
+- multi-thread
 
 ---
 总结下几个使用shared_ptr需要注意的问题:

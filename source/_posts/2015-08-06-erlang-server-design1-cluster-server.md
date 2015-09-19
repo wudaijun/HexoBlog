@@ -3,13 +3,13 @@ title: 开发笔记(1) cluster server
 layout: post
 tags: erlang
 categories: erlang
-
 ---
-##设计原则：
+
+## 设计原则
 
 无单点，高可用性，强大的热更支持。
 
-##集群：
+## 集群
 
 整个服务器可能有很多node，node可根据其职责来划分，如player_node，master_node，pvp_node，每种node可有多个。其中master_node负责连接和管理所有node，新加入的node只需和master_node连接，即加入了整个集群。
 

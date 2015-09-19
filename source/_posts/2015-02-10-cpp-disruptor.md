@@ -2,7 +2,7 @@
 layout: post
 title: c++ disruptor 无锁消息队列
 categories:
-- GameServer
+- gameserver
 tags:
 - multi-thread
 ---

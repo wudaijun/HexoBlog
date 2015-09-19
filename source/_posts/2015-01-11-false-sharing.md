@@ -2,7 +2,7 @@
 layout: post
 title: false sharing
 categories:
-- GameServer
+- gameserver
 tags:
 - multi-thread
 ---

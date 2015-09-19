@@ -2,7 +2,7 @@
 layout: post
 title: NGServer Service框架
 categories:
-- GameServer
+- gameserver
 tags:
 - NGServer
 ---

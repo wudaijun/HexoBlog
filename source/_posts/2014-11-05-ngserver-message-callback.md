@@ -2,7 +2,7 @@
 layout: post
 title: NGServer 消息的注册与回调
 categories:
-- GameServer
+- gameserver
 tags:
 - NGServer
 ---

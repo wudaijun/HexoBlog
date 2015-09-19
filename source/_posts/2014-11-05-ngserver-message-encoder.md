@@ -2,7 +2,7 @@
 layout: post
 title: NGServer 消息的编解码
 categories:
-- GameServer
+- gameserver
 tags:
 - NGServer
 ---

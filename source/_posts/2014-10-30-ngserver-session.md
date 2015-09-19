@@ -2,7 +2,7 @@
 layout: post
 title: NGServer Session设计
 categories:
-- GameServer
+- gameserver
 tags:
 - NGServer
 ---

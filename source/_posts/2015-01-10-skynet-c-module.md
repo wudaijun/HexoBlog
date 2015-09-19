@@ -2,7 +2,7 @@
 layout: post
 title: skynet C模块
 categories:
-- GameServer
+- gameserver
 tags:
 - lua
 - skynet
