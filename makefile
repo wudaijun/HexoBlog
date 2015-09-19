@@ -4,4 +4,4 @@ deploy:
 	cp -r source/assets public/
 
 theme:
-	git clone https://github.com/wudaijun/Hexo-theme-light_cn theme/light_cn
+	git clone https://github.com/wudaijun/Hexo-theme-light_cn themes/light_cn
