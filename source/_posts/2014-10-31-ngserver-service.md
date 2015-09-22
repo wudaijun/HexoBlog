@@ -4,7 +4,7 @@ title: NGServer Service框架
 categories:
 - gameserver
 tags:
-- NGServer
+- ngserver
 ---
 
 NGServer的核心概念便是服务(Service)，它对逻辑层表现为一个线程，处理各种特定的相关业务。如日志服务(LogService)，数据库服务(DBService)，登录服务(LoginService)。服务之间通过消息进行交互。Service实际上并不是一个独立线程，Service与线程是一种"多对多"的关系。即所有的Service通过ServiceManager来管理，后者维护一个线程池，并将线程池与"服务池"以某种调度方式关联，让线程充分被利用。

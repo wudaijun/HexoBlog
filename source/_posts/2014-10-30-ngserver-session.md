@@ -4,7 +4,7 @@ title: NGServer Session设计
 categories:
 - gameserver
 tags:
-- NGServer
+- ngserver
 ---
 
 在网络编程模型中，一个Session代表一次会话，主要维护网络数据的发送和接收。对外提供发送数据和处理数据的接口。一个高效的Session主要通过缓冲和异步来提高IO效率。NGServer的Session运用双缓冲和boost::asio的异步机制，很好地做到了这一点。

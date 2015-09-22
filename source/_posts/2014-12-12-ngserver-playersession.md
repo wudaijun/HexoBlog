@@ -4,7 +4,7 @@ title: NGServer 加入PlayerSession
 categories:
 - gameserver
 tags:
-- NGServer
+- ngserver
 ---
 
 ## PlayerSession类

@@ -1,8 +1,8 @@
 ---
 title: NGServer 简介
 layout: post
-tag: NGServer
-categories: gameserver	
+tag: ngserver
+categories: gameserver
 ---
 
 NGServer是本人做的一个迷你型C++游戏服务器框架。Github地址：https://github.com/wudaijun/NGServer。

@@ -4,7 +4,7 @@ title: NGServer 消息的注册与回调
 categories:
 - gameserver
 tags:
-- NGServer
+- ngserver
 ---
 
 在前面Service框架的介绍中，提到在GameService的`ProcessMsg(UserMessage*)`和`ProcessMsg(InsideMessage*)`中，都完成了消息的回调处理。消息响应函数的注册是在服务初始化(Init())中完成的。需要注册和回调的消息有InsideMessage和UserMessage，对于InsideMessage，响应函数只有一种形式：即为响应服务的成员函数。而对于UserMessage，由于UserMessage有Player指针，响应函数则会有多种形式：

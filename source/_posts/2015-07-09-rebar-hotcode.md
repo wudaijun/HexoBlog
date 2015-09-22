@@ -1,7 +1,7 @@
 ---
 title: rebar的热更
 layout: post
-tags: erlnag
+tags: erlang
 categories: erlang
 ---
 
