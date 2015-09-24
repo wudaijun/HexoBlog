@@ -24,3 +24,9 @@ server:
 
 theme:
 	git clone https://github.com/wudaijun/Hexo-theme-light_cn themes/light-cn
+
+gen:
+	hexo generate
+
+clean:
+	hexo clean
