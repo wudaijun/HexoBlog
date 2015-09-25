@@ -1,0 +1,171 @@
+
+### 链接
+
+链接(link)是两个进程之间的一种特殊的关系。一旦这种关系建立，如果任意一端的进程发生异常，错误，或退出，链接的另一端进程将一并退出。
+
+这是个很有用的概念，源自于Erlang的原则"鼓励崩溃"：如果发生错误的进程崩溃了，而那些依赖它的进程不受影响，那么之后所有这些依赖进程都需要处理这种依赖缺失。让它们都退出再重启整组进程通常是一个可行的方案。链接正提供了这种方案所需。
+
+要为两个进程设置链接，Erlang提供了基础函数`link/1`，它接收一个Pid作为参数。这个函数将在当前进程和Pid进程之前创建一个链接。要取消链接，可使用`ulink/1`。当链接的一个进程崩溃，将发送一个特殊的消息，该消息描述了哪个进程出于什么原因而发送故障。如果进程正常退出(如正常执行完其主函数)，这类消息将不会被发送。我将在[linkmon.erl](http://learnyousomeerlang.com/static/erlang/linkmon.erl)中介绍这类函数：
+
+	myproc() ->
+		timer:sleep(5000),
+		exit(reason).
+		
+如果你尝试下面的调用(并且在两次spawn操作之间等待5秒钟)，你就能看到shell只有在两个进程之前设置了链接时，才会崩溃。
+
+	1> c(linkmon).
+	{ok,linkmon}
+	2> spawn(fun linkmon:myproc/0).
+	<0.52.0>
+	3> link(spawn(fun linkmon:myproc/0)).
+	true
+	** exception error: reason	% 译注：此时Shell Process已经崩溃，只是立即被重启了。通过self()查看前后的Pid是不同的
+	
+或者，我们可以用图片来阐述：
+
+![](/assets/image/erlang/process_link_exit.png "")
+
+然后，这个`{'EXIT', B, Reason}`消息并不能被`try ... catch`捕获。我们需要通过其它机制来实现这点，我们将在后面看到。
+
+链接通常被用来建立一个需要一起退出的进程组：
+
+	chain(0) ->
+		receive
+			_ -> ok
+		after 2000 ->
+			exit("chain dies here")
+		end;
+	chain(N) ->
+		Pid = spawn(fun() -> chain(N-1) end),
+		link(Pid),
+		receive
+			_ -> ok
+		end.
+		
+`chain`函数接收一个整型参数N，创建N个依次相互链接的进程。为了能够将N-1参数传递给下一个`chain`进程(也就是`spawn/1`)，我将函数调用放在了一个匿名函数中，因此它不再需要参数。调用`spawn(?MODULE, chain, [N-1])`能达到同样的效果。
+
+这里，我将有一条链式的进程组，并且随着它们的后继者退出而退出：
+
+	4> c(linkmon).              
+	{ok,linkmon}
+	5> link(spawn(linkmon, chain, [3])).
+	true
+	** exception error: "chain dies here"
+	
+正如你所看到的，Shell将从其它进程收到死亡信号。这幅图阐述产生的进程依次链接：
+
+	[shell] == [3] == [2] == [1] == [0]
+	[shell] == [3] == [2] == [1] == *dead*
+	[shell] == [3] == [2] == *dead*
+	[shell] == [3] == *dead*
+	[shell] == *dead*
+	*dead, error message shown*
+	[shell] <-- restarted
+	
+在执行`linkmon:chain(0)`的进程死掉之后，错误消息沿着链接链依次传播，直播Shell进程也因此崩溃。崩溃可能发生在任何已经链接的进程中，因为链接是双向的，你只需要令其中一个死亡，其它进程都会随之死亡。
+
+**注：如果你想要通过Shell杀掉其它进程，你可以使用`exit/2`函数，如：`exit(Pid, Reason)`。你可以试试。**
+
+**注：链接操作无法被累加，如果你在同样的一对进程上调用`link/1`15次，也只会实际存在一个链接，并且只需要一次`unlink/1`调用就可以解除链接。**
+
+注意，`link(spawn(Function))`或`link(spawn(M,F,A))`是通过多步实现的。在一些情况下，可能进程在被链接之前就死掉了，这样引发了未知行为。出于这个原因，Erlang添加了`spawn_link/1-3`函数，它和`spawn/1-3`接收同样的参数，创建一个进程并且相`link/1`一样建立链接，但是它是一个原子操作(这个操作混合了多个指令，它可能成功或失败，但不会有其它未期望行为)。着通常更安全，并且你也省去了一堆圆括号。
+
+### 这是一个陷阱！
+
+现在回到链接和进程故障。错误在进程之间向消息那样传递，这类特殊的消息叫做信号。退出信号是自动作用于进程的"秘密消息"，它会立即杀死进程。
+
+我之前提到过很多次，为了高可靠性，应用程序需要能够很快的杀掉和重启进程。现在，链接很好地完成了杀死进程的任务，还差进程重启。
+
+为了重启一个进程，我们首先需要一种方式来知道有进程挂了。这可以通过在链接之上封装一层叫系统进程的概念来完成。系统进程其实就是普通进程，只不过他们可以将退出信号转换为普通消息。在一个运行进程上执行`precess_floag(trap_exit, true)`可以
+将其转换为系统进程。没什么比例子更具有说服力了，我们来试试。我首先在一个系统进程上将重演chain例子：
+
+	1> process_flag(trap_exit, true).
+	true
+	2> spawn_link(fun() -> linkmon:chain(3) end).
+	<0.49.0>
+	3> receive X -> X end.
+	{'EXIT',<0.49.0>,"chain dies here"}
+	
+现在事情变得有趣了，回到我们的图例中，现在发生的是这样：
+
+	[shell] == [3] == [2] == [1] == [0]
+	[shell] == [3] == [2] == [1] == *dead*
+	[shell] == [3] == [2] == *dead*
+	[shell] == [3] == *dead*
+	[shell] <-- {'EXIT,Pid,"chain dies here"} -- *dead*
+	[shell] <-- still alive!
+	
+这就是让我们可以快速重启进程的机制。通过在程序中使用系统进程，创建一个只负责检查进程崩溃并且在任意时间都能重启故障进程的进程变得很简单。我将在下一章真正用到了这项技术时，更详细地阐述这点。
+
+现在，我想回到我们在[exceptions](http://learnyousomeerlang.com/errors-and-exceptions)这一章看到的异常函数，并且展示它在设置了`trap exit`的进程上有何种行为。我们首先试验没有系统进程的情况。我连续地在相邻的进程上展示了未被捕获的异常，错误，和退出所造成的结果：
+
+	Exception source:	spawn_link(fun() -> ok end)
+	Untrapped Result:	- nothing - 
+	Trapped	  Result:	{'EXIT', <0.61.0>, normal}
+	注：进程正常退出，没有任何故障。这有点像`catch exit(normal)`的结果，除了在tuple中添加了Pid以知晓是哪个进程退出了。
+	
+	Exception source:	spawn_link(fun() -> exit(reason) end)
+	Untrapped Result:	** exception exit: reason
+	Trapped   Result:	{'EXIT', <0.55.0>, reason}
+	注：进程由于客观原因而终止，在这种情况下，如果没有捕获退出信号(trap exit)，当前进程被终止，否则你将收到以上消息。
+	
+	Exception source：	spawn_link(fun() -> exit(normal) end)
+	Untrapped Result:	- nothing -
+	Trapped   Result:	{'EXIT', <0.58.0>, normal}
+	注：这相当于模仿进程正常终止。在一些情况下，你可能希望像正常流程一样杀掉进程，不需要任何异常流出。
+	
+	Exception source:	spawn_link(fun() -> 1/0 end)
+	Untrapped Result:	Error in process <0.44.0> with exit value: {badarith, [{erlang, '/', [1,0]}]}
+	Trapped   Result:	{'EXIT', <0.52.0>, {badarith, [{erlang, '/', [1,0]}]}}
+	注：{badarith, Reason}不会被try ... catch捕获，继而转换为'EXIT'消息。这一点上来看，它的行为很像exit(reason)，但是有调用堆栈，可以了解到更多的信息。
+	
+	Exception source:	spawn_link(fun() -> erlang:error(reason) end)
+	Untrapped Result:	Error in process <0.47.0> with exit value: {reason, [{erlang, apply, 2}]}
+	Trapped   Result:	{'EXIT', <0.74.0>, {reason, [{erlang, apply, 2}]}}
+	注：和1/0的情况很像，这是正常的，erlang:error/1 就是为了让你可以做到这一点。
+	
+	Exception source:	spawn_link(fun() -> throw(rocks) end)
+	Untrapped Result:	Error in process <0.51.0> with exit value: {{nocatch, rocks}, [{erlang, apply, 2}]}
+	Trapped   Result:	{'EXIT', <0.79.0>, {{nocatch, rocks}, [{erlang, apply, 2}]}}
+	注：由于抛出的异常没有被try ... catch捕获，它向上转换为一个nocatch错误，然后再转换为`EXIT`消息。如果没有捕获退出信号，当前进程当终止，否则工作正常。
+	
+这些都是一般异常。通常情况下：一切都工作得很好。当异常发生：进程死亡，不同的信号被发送出去。
+
+然后来介绍`exit/2`，它在Erlang进程中就相当于一把枪。它可以让一个进程杀掉远端另一个进程。以下是一些可能的调用情况：
+
+	Exception source: 	exit(self(), normal)
+	Untrapped Result: 	** exception exit: normal
+	Trapped   Result: 	{'EXIT', <0.31.0>, normal}	注：当没有捕获退出信号时，exit(self(), normal)和exit(normal)作用一样。否则你将收到一条和链接进程挂掉一样格式的消息。(译注：如果忽略了{'EXIT', self(), normal}，将不能通过exit(self(), normal)的方式杀掉自己。而exit(normal)则可以在任何情况结束自己。)
+	
+	Exception source: 	exit(spawn_link(fun() -> timer:sleep(50000) end), normal)
+	Untrapped Result: 	- nothing -
+	Trapped   Result: 	- nothing -
+	注：这基本上等于调用exit(Pid, normal)。这条命令基本没有做任何有用的事情，因为进程不能以normal的方式来杀掉远端进程。(译注：通过normal的方式kill远端进程是无效的)。
+	
+	Exception source: 	exit(spawn_link(fun() -> timer:sleep(50000) end), reason)
+	Untrapped Result: 	** exception exit: reason
+	Trapped   Result: 	{'EXIT', <0.52.0>, reason}
+	注：外部进程通过reason终止，看起来效果和在外部进程本身执行exit(reason)一样。
+	
+	Exception source: 	exit(spawn_link(fun() -> timer:sleep(50000) end), kill)
+	Untrapped Result: 	** exception exit: killed
+	Trapped   Result: 	{'EXIT', <0.58.0>, killed}
+	注：出乎意料地，消息在从终止进程传向父进程(调用spawn的进程)时，发生了变化。父进程收到killed而不是kill。这是因为kill是一个特殊的信号，更多的细节将在后面提到。
+	
+	Exception source: 	exit(self(), kill)
+	Untrapped Result: 	** exception exit: killed
+	Trapped   Result: 	** exception exit: killed
+	注：看起来这种情况不能够被正确地捕捉到，让我们来检查一下。
+	
+	Exception source: 	spawn_link(fun() -> exit(kill) end)
+	Untrapped Result: 	** exception exit: killed
+	Trapped   Result: 	{'EXIT', <0.67.0>, kill}
+	注：现在看起来更加困惑了。当其它进程通过exit(kill)杀掉自己，并且我们不捕获退出信号，我们自己的进程退出原因为killed。然而，当我们捕获退出信号，却不再是killed。
+	
+你可以捕获大部分的退出原因，在有些情况下，你可能想要残忍地谋杀进程：也许它捕获了退出信号，但是陷入了死循环，不能再读取任何消息。kill是一种不能被捕获的特殊信号。这一点确保了任何你想要杀掉的进程都将被终止。通常，当所有其它办法都试尽之后，kill是最后的杀手锏。
+
+由于kill退出原因不能够捕获，因此当其它进程收到该消息时，需要转换为killed。如果不以这种方式作出改变，所有其它链接到被kill进程的进程都将相继以相同的kill原因被终止，并且继续扩散到与它们链接的进程。随之而来的是一场死亡的雪崩效应。
+
+这也解释了为什么`exit(kill)`在被其它链接进程收到时转换成了killed(信号被修改了，这样才不会发生雪崩效应)，但是在本地捕获时(译注：这里我也没搞清楚，本地是指被kill的进程，还是指发出kill命令的进程)，仍然是kill。
+
+如果你对这一切感到困惑，不用担心，很多程序员都为此困惑。退出信号是一头有趣的野兽。幸运的是，除了上面提到的之外，没有其他特殊情况了。一旦你明白了这些，你就可以轻松明白大多数的Erlang并发错误管理机制。
