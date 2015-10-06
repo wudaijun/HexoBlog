@@ -1,17 +1,32 @@
+---
+title: 【译】进程和错误
+layout: post
+tags: erlang
+categories: erlang
+
+---
+
+[learn some erlang](http://learnyousomeerlang.com/content)上很喜欢的一个章节，主要阐述进程，链接，监视，信号捕获等。花了两天的时间才翻译完(- -)。第一次翻译文章，真心不是件容易的事。但也受益匪浅，平时一晃而过的地方，现在却要字字推敲。这是初稿，后续慢慢校正。原文地址：http://learnyousomeerlang.com/errors-and-processes
+
+</br>
+---
+</br>
+
+<!--more-->
 
 ### 链接
 
-链接(link)是两个进程之间的一种特殊的关系。一旦这种关系建立，如果任意一端的进程发生异常，错误，或退出，链接的另一端进程将一并退出。
+链接(link)是两个进程之间的一种特殊的关系。一旦这种关系建立，如果任意一端的进程发生异常，错误，或退出(参见[Errors and Exceptions](http://learnyousomeerlang.com/errors-and-exceptions))，链接的另一端进程将一并退出。
 
-这是个很有用的概念，源自于Erlang的原则"鼓励崩溃"：如果发生错误的进程崩溃了，而那些依赖它的进程不受影响，那么之后所有这些依赖进程都需要处理这种依赖缺失。让它们都退出再重启整组进程通常是一个可行的方案。链接正提供了这种方案所需。
+这是个很有用的概念，源自于Erlang的原则"鼓励崩溃"：如果发生错误的进程崩溃了而那些依赖它的进程不受影响，那么之后所有这些依赖进程都需要处理这种依赖缺失。让它们都退出再重启整组进程通常是一个可行的方案。链接正提供了这种方案所需。
 
-要为两个进程设置链接，Erlang提供了基础函数`link/1`，它接收一个Pid作为参数。这个函数将在当前进程和Pid进程之前创建一个链接。要取消链接，可使用`ulink/1`。当链接的一个进程崩溃，将发送一个特殊的消息，该消息描述了哪个进程出于什么原因而发送故障。如果进程正常退出(如正常执行完其主函数)，这类消息将不会被发送。我将在[linkmon.erl](http://learnyousomeerlang.com/static/erlang/linkmon.erl)中介绍这类函数：
+要为两个进程设置链接，Erlang提供了基础函数`link/1`，它接收一个Pid作为参数。这个函数将在当前进程和Pid进程之前创建一个链接。要取消链接，可使用`ulink/1`。当链接的一个进程崩溃，将发送一个特殊的消息，该消息描述了哪个进程出于什么原因而发送故障。如果进程正常退出(如正常执行完其主函数)，这类消息将不会被发送。我将首先介绍这个新函数，它是[linkmon.erl](http://learnyousomeerlang.com/static/erlang/linkmon.erl)的一部分：
 
 	myproc() ->
 		timer:sleep(5000),
 		exit(reason).
 		
-如果你尝试下面的调用(并且在两次spawn操作之间等待5秒钟)，你就能看到shell只有在两个进程之前设置了链接时，才会崩溃。
+如果你尝试下面的调用(并且在两次spawn操作之间等待5秒钟)，你就能看到shell只有在两个进程之间设置了链接时，才会因`reason`而崩溃。
 
 	1> c(linkmon).
 	{ok,linkmon}
@@ -27,7 +42,7 @@
 
 然后，这个`{'EXIT', B, Reason}`消息并不能被`try ... catch`捕获。我们需要通过其它机制来实现这点，我们将在后面看到。
 
-链接通常被用来建立一个需要一起退出的进程组：
+值得注意的是，链接通常被用来建立一个需要一起退出的进程组：
 
 	chain(0) ->
 		receive
@@ -64,9 +79,9 @@
 	
 在执行`linkmon:chain(0)`的进程死掉之后，错误消息沿着链接链依次传播，直播Shell进程也因此崩溃。崩溃可能发生在任何已经链接的进程中，因为链接是双向的，你只需要令其中一个死亡，其它进程都会随之死亡。
 
-**注：如果你想要通过Shell杀掉其它进程，你可以使用`exit/2`函数，如：`exit(Pid, Reason)`。你可以试试。**
-
-**注：链接操作无法被累加，如果你在同样的一对进程上调用`link/1`15次，也只会实际存在一个链接，并且只需要一次`unlink/1`调用就可以解除链接。**
+	注意：如果你想要通过Shell杀掉其它进程，你可以使用`exit/2`函数，如：`exit(Pid, Reason)`。你可以试试。
+	
+	链接操作无法被累加，如果你在同样的一对进程上调用`link/1`15次，也只会实际存在一个链接，并且只需要一次`unlink/1`调用就可以解除链接。
 
 注意，`link(spawn(Function))`或`link(spawn(M,F,A))`是通过多步实现的。在一些情况下，可能进程在被链接之前就死掉了，这样引发了未知行为。出于这个原因，Erlang添加了`spawn_link/1-3`函数，它和`spawn/1-3`接收同样的参数，创建一个进程并且相`link/1`一样建立链接，但是它是一个原子操作(这个操作混合了多个指令，它可能成功或失败，但不会有其它未期望行为)。着通常更安全，并且你也省去了一堆圆括号。
 
@@ -150,7 +165,7 @@
 	Exception source: 	exit(spawn_link(fun() -> timer:sleep(50000) end), kill)
 	Untrapped Result: 	** exception exit: killed
 	Trapped   Result: 	{'EXIT', <0.58.0>, killed}
-	注：出乎意料地，消息在从终止进程传向父进程(调用spawn的进程)时，发生了变化。父进程收到killed而不是kill。这是因为kill是一个特殊的信号，更多的细节将在后面提到。
+	注：出乎意料地，消息在从终止进程传向根源进程(译注：调用spawn的进程)时，发生了变化。根源进程收到killed而不是kill。这是因为kill是一个特殊的信号，更多的细节将在后面提到。
 	
 	Exception source: 	exit(self(), kill)
 	Untrapped Result: 	** exception exit: killed
@@ -220,3 +235,159 @@
 	ok
 	
 `info`选项将告诉你在你取消监视的时候监视是否存在，因此第10行返回false。使用`flush`选项将移除信箱中的`DOWN`消息(译注：其它消息不受影响)，导致`flush()`操作没有在当前进程信箱中取得任何消息。
+
+### 命名的进程
+
+理解了链接和监视之后，还有一个问题需要解决。我们使用[linkmon.erl](http://learnyousomeerlang.com/static/erlang/linkmon.erl)模块的以下函数：
+
+	start_critic() ->
+		spawn(?MODULE, critic, []).
+	 
+	judge(Pid, Band, Album) ->
+		Pid ! {self(), {Band, Album}},
+		receive
+			{Pid, Criticism} -> Criticism
+		after 2000 ->
+			timeout
+		end.
+	 
+	critic() ->
+		receive
+			{From, {"Rage Against the Turing Machine", "Unit Testify"}} ->
+				From ! {self(), "They are great!"};
+			{From, {"System of a Downtime", "Memoize"}} ->
+				From ! {self(), "They're not Johnny Crash but they're good."};
+			{From, {"Johnny Crash", "The Token Ring of Fire"}} ->
+				From ! {self(), "Simply incredible."};
+			{From, {_Band, _Album}} ->
+				From ! {self(), "They are terrible!"}
+		end,
+		critic().
+		
+现在假设我们在商店购买唱片。这里有一些听起来很有趣的专辑，但是我们不是很确定。你决定打电话给你的朋友`ctritic`(译注：后文称"鉴定家")。
+
+	1> c(linkmon).                        
+		{ok,linkmon}
+	2> Critic = linkmon:start_critic().
+		<0.47.0>
+	3> linkmon:judge(Critic, "Genesis", "The Lambda Lies Down on Broadway").
+		"They are terrible!"
+		
+烦人的是，我们不久后就不能再得到唱片的评论了。为了保持鉴定家一直存活，我们将写一个基本的监督者进程，它的唯一职责就是在鉴定家挂掉之后重启它。
+
+	start_critic2() ->
+		spawn(?MODULE, restarter, []).
+ 
+	restarter() ->
+		process_flag(trap_exit, true),
+		Pid = spawn_link(?MODULE, critic, []),
+		receive
+			{'EXIT', Pid, normal} -> % not a crash
+				ok;
+			{'EXIT', Pid, shutdown} -> % manual termination, not a crash
+				ok;
+			{'EXIT', Pid, _} ->
+				restarter()
+		end.
+		
+这里，重启者就是它自己持有的进程。它会轮流启动鉴定家进程，并且一旦它异常退出，`restarter/0`将循环创建新的鉴定家。注意我添加了`{'EXIT', Pid, shudown}`条目，这是为了让我们在必要时，可以手动杀掉鉴定家进程。
+
+我们这个方法的问题是，我们没有办法获得鉴定家进程的Pid，因此我们不能调用它并获得它的评论。Erlang解决这种问题的一个解决方案是为进程取一个名字。
+
+为进程取名字的作用是允许你用一个原子代替不可预测的Pid。之后这个原子可以像Pid一样用来发送消息。`erlang:register/2`被用来为进程取名。如果进程死亡，它会自动失去它的名字，你也可以使用`unregister/1`手动取消名字。你可以通过`register/0`获得一个所有注册了名字的进程列表，或者通过shell命令`reg()`获得更为详尽的信息。现在我们可以像下面这样重写`restarter/0`函数：
+
+	restarter() ->
+		process_flag(trap_exit, true),
+		Pid = spawn_link(?MODULE, critic, []),
+		register(critic, Pid),
+		receive
+			{'EXIT', Pid, normal} -> % not a crash
+				ok;
+			{'EXIT', Pid, shutdown} -> % manual termination, not a crash
+				ok;
+			{'EXIT', Pid, _} ->
+				restarter()
+		end.
+		
+正如你所看到的，不管鉴定家进程的Pid是什么，`register/2`将总是为其取名为`critic`。我们还需要做的是从抽象函数中替换需要传递Pid的地方。让我们试试：
+
+	judge2(Band, Album) ->
+		critic ! {self(), {Band, Album}},
+		Pid = whereis(critic),
+		receive
+			{Pid, Criticism} -> Criticism
+		after 2000 ->
+			timeout
+		end.
+	
+这里，为了能在`receive`语句中进行模式匹配，`Pid = whereis(critic)`被用来查找鉴定家进程的Pid。我们需要这个Pid来确定我们能匹配到正确的消息(在我们说话的时候，它的信箱可能有500条消息！)。这可能是问题的来源。上面的代码假设了鉴定家进程在函数的前两行将保持一致。然而，下面的情况是完全有可能发生的：
+
+	1. critic ! Message
+			                       	2. critic receives
+			                       	3. critic replies
+			                       	4. critic dies
+	5. whereis fails
+									6. critic is restarted
+	7. code crashes
+	
+	当然，还有一种情况可能发生：
+		
+	1. critic ! Message
+				                   	2. critic receives
+				                   	3. critic replies
+				                  	4. critic dies
+				              	    5. critic is restarted
+	6. whereis picks up
+	   wrong pid
+	7. message never matches
+	
+如果我们不处理好的话，在一个进程中出错将可能导致另一个进程错误。在这种情况下，原子`critic`代表的值可能被多个进程看到。这就说所谓的共享状态。这里的问题是，`critic`的值可以在几乎同一时间被多个进程获取和修改，导致不一致的信息和软件错误。这类情况的通用术语为**竞态**。竞态是特别危险的，因为其依赖于事件时序。在几乎所有的并发和并行语言中，这种时序依赖于很多不可预测的因素，比如处理器有多忙，进程执行到哪了，以及你的程序在处理哪些数据。
+
+	别麻醉了自己
+	
+	你可能听说过Erlang通常是没有竞态或死锁的，这令并行代码更安全。这在很多情况下都是对的，但是永远不要认为你的代码真的那样安全。命名进程只是并行代码可能出错的多种情况之一。
+	
+	其它例子还包括计算机访问文件(并修改它们)，多个不同的进程更新相同的数据库记录，等等。
+
+对我们来说幸运的是，如果我们不假设命名进程保持不变的话，修复上面的代码是比较容易的。取而代之地，我们将使用引用(通过`make_ref()`创建)作为一个唯一的值来标识消息。我们需要重写`critic/0`为`critic/2`，`judge/3`为`judge2/2`：
+
+	judge2(Band, Album) ->
+		Ref = make_ref(),
+	critic ! {self(), Ref, {Band, Album}},
+		receive
+			{Ref, Criticism} -> Criticism
+		after 2000 ->
+			timeout
+		end.
+ 
+	critic2() ->
+		receive
+			{From, Ref, {"Rage Against the Turing Machine", "Unit Testify"}} ->
+				From ! {Ref, "They are great!"};
+			{From, Ref, {"System of a Downtime", "Memoize"}} ->
+				From ! {Ref, "They're not Johnny Crash but they're good."};
+			{From, Ref, {"Johnny Crash", "The Token Ring of Fire"}} ->
+				From ! {Ref, "Simply incredible."};
+			{From, Ref, {_Band, _Album}} ->
+				From ! {Ref, "They are terrible!"}
+		end,
+		critic2().
+	 
+并且随之改变`restarter/0`，让它通过`critic2/0`而不是`critic/0`来产生新进程。其它函数应该能保持正常工作。用户并不能察觉到变化。好吧，他们能察觉到，因为我们改变了函数名和函数参数个数，但是他们并不知道实现细节的改变和为什么这些改变如此重要。他们能看到的是他们的代码更简单了，并且不在需要Pid来调用函数了：
+
+	6> c(linkmon).
+	{ok,linkmon}
+	7> linkmon:start_critic2().
+	<0.55.0>
+	8> linkmon:judge2("The Doors", "Light my Firewall").
+	"They are terrible!"
+	9> exit(whereis(critic), kill).
+	true
+	10> linkmon:judge2("Rage Against the Turing Machine", "Unit Testify").    
+	"They are great!"
+	
+现在，即使我们杀掉了critic，马上会有一个新的回来解决我们的问题。这就是命名进程的作用。如果你试图通过没有注册的进程调用`linkmon:judge2/2`，一个`bad argument`错误将会被函数内的`!`操作符抛出，确保依赖于命名进程的进程，将不能在没有命名进程的情况下而运行。
+
+	注意：如果你还记得之前的文章，原子可用的数量有限(尽管很高)。你不应该动态地创建原子。这意味着命名进程应该保留给一些虚拟机上唯一的伴随整个应用程序周期的重要的服务。
+	
+	如果你需要为进程命名，但是它们不是常驻进程或者它们都不是虚拟机上唯一的，那可能意味着它们需要表示为一组，链接它们，并在它们崩溃后重启可能是一个理智的选择，而不是尝试为他们动态命名。
