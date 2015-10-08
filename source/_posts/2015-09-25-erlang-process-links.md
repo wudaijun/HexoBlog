@@ -8,9 +8,7 @@ categories: erlang
 
 [learn some erlang](http://learnyousomeerlang.com/content)上很喜欢的一个章节，主要阐述进程，链接，监视，信号捕获等。花了两天的时间才翻译完(- -)。第一次翻译文章，真心不是件容易的事。但也受益匪浅，平时一晃而过的地方，现在却要字字推敲。这是初稿，后续慢慢校正。原文地址：http://learnyousomeerlang.com/errors-and-processes
 
-</br>
 ---
-</br>
 
 <!--more-->
 

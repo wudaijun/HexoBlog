@@ -6,9 +6,9 @@ categories: unity
 
 ---
 
-### 动画系统
+### Unity Mecanim 一点笔记
 
-如果动画包含多层，要设置动画层权重
+如果动画包含多层，要在初始化时设置动画层权重。
 
 通常情况下，在我们操作角色时，脚本根据玩家输入，设置动画的行进速度(可平滑过度)，由动画的Blend Tree来做到角色走和跑之间的平滑过渡，并且将动画的实际位移作用于角色模型上。也就是说，由动画控制前进(走，跑)，脚本直接控制转向(`rigidbody.MoveRotation`)。模型只需提供`Walk`和`Run`两个动画片段即可，但需要导入位移信息。
 
@@ -16,9 +16,11 @@ Animator有个比较有用的选项，用于通过脚本而不是动画来控制
 
 `Apply Root Motion`：是否将动画的位移，转向作用于实际模型之上。即模型的运动(Position，Rotation的变化)是由动画控制还是脚本控制。
 
+<!--more-->
+
 Apply Root Motion的作用示例：
 
-![](asset/image/unity/apply_root_motion_demo.gif)
+![](/assets/image/unity/apply_root_motion_demo.gif "")
 
 当取消`Apply Root Motion`时，动画的转向和移动都将被屏蔽，只显示动画本身的动作。`Apply Root Motion`在一些场合下很有用，比如当模型自己有AI：
 
@@ -41,6 +43,5 @@ NavMeshAgent: 寻路组件，要使用它，首先要烘培寻路地形(Windows-
 
 2. 由动画控制敌人移动
 
-	逻辑处理不变，取消`OnAmimatorMove()`，勾选`Apply Root Motion`，并且同时禁用NavMeshAgent的updateRotation和updatePosition。
+	逻辑处理不变，取消`OnAmimatorMove()`，勾选`Apply Root Motion`，并且同时禁用NavMeshAgent的updateRotation和updatePosition。此时nav的速度矢量仅作为参考，最终速度将设置在动画系统中，并由动画系统作用于实际模型。
 	
-	Unity官方Stealth教程使用的是前一种方法，但个人觉得后一种方法更好，在确保动画层表现和角色运动状态一致的情况下，利用`nav.desiredVelocity`得出当前运动矢量(speed, angularSpeed)，并设置到动画。
