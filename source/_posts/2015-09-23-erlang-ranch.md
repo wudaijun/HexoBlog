@@ -40,7 +40,7 @@ ranch做了什么：
 
 ranch的进程结构如下：
 
-![](/assets/image/erlang_ranch.png "ranch进程结构")
+![](/assets/image/erlang/erlang_ranch.png "ranch进程结构")
 
 #### ranch_server: 
 维护全局配置信息，整个ranch_app唯一，由多个listener共享。通过ets维护一些配置信息和核心进程的Pid信息，格式`\{\{Opt, Ref\}, OptValue\}`，Ref是listener名字。

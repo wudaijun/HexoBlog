@@ -1,12 +1,10 @@
 ---
-title:
+title: Unity 动画系统小记
 layout: post
 tags: unity
 categories: unity
 
 ---
-
-### Unity Mecanim 一点笔记
 
 如果动画包含多层，要在初始化时设置动画层权重。
 
