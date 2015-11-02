@@ -20,6 +20,8 @@ erlang mongodb驱动地址: https://github.com/comtihon/mongodb-erlang
 - mongodb driver能够支持integer作为key
 - 从模型到对象的转换是透明的，无需我们关心
 
+<!--more-->
+
 之前我们服务器逻辑中的数据模型是Dict，而mongodb-erlang使用的是bson-list来表示文档，在此之上做了一些比较繁杂转换。自mongodb-erlang支持map之后，我们也将数据结构由dict改为了map(PS: 非直观的是，map的效率不比dict差，参见[测试代码](https://github.com/wudaijun/Code/blob/master/erlang/map_test.erl))，如此我们需要对驱动读取的map的key value做一些类型转换。为了达到以上两点，我们对mongodb-erlang驱动做了些更改：
 
 1. 修改mongodb-erlang的依赖[bson-erlang](https://github.com/comtihon/bson-erlang)，在src/bson_binary.erl中添加对integer key的存储支持：
