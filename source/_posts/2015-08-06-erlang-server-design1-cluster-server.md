@@ -56,6 +56,8 @@ del_process(Type, Id) -> ok
 
 至于其它的Agent进程与Player进程关联，登录重登机制，都大同小异。现在在考虑的一件事是落地优化，目前实行的落地是直接覆写，没有进行字段跟踪或模块标记来优化。
 
+
+
 [mnesia]: http://wudaijun.com/2015/04/erlang-mnesia/
 [mongodb]: https://github.com/comtihon/mongodb-erlang
 [ranch]: https://github.com/ninenines/ranch
