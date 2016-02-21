@@ -6,6 +6,10 @@ categories: unity
 
 ---
 
+校正：本文对动画系统理解上有很大的偏差和局限性，关于更详细正确的理解可参见：
+
+http://blog.csdn.net/cubesky/article/details/39478207
+
 ### 动画系统
 
 如果动画包含多层，要设置动画层权重
@@ -42,5 +46,3 @@ NavMeshAgent: 寻路组件，要使用它，首先要烘培寻路地形(Windows-
 2. 由动画控制敌人移动
 
 	逻辑处理不变，取消`OnAmimatorMove()`，勾选`Apply Root Motion`，并且同时禁用NavMeshAgent的updateRotation和updatePosition。
-	
-	Unity官方Stealth教程使用的是前一种方法，但个人觉得后一种方法更好，在确保动画层表现和角色运动状态一致的情况下，利用`nav.desiredVelocity`得出当前运动矢量(speed, angularSpeed)，并设置到动画。
