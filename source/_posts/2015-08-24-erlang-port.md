@@ -20,7 +20,7 @@ Erlang与外部程序交互的方式主要有三种：
 
 #### 1.简介
 
-![](/assets/image/Erlang_Port.png "普通端口")
+![](/assets/image/erlang/Erlang_Port.png "普通端口")
 
 图一. Ports 通信模型
 
@@ -44,7 +44,7 @@ Erlang与外部程序交互的方式主要有三种：
 
 #### 1.简介
 
-![](/assets/image/Erlang_Port_Driver.png "端口驱动")
+![](/assets/image/erlang/Erlang_Port_Driver.png "端口驱动")
 
 图二. Port Driver 通信模型
 

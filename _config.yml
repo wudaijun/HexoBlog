@@ -3,9 +3,9 @@
 ## Source: https://github.com/hexojs/hexo/
 
 # Site
-title: wudaijun's blog 
-subtitle: 写下来的才是实在货
-description: 
+title: wudaijun's blog
+subtitle: thinking... writing...
+description:
 author: wudaijun
 language: zh-CN
 timezone:
@@ -14,7 +14,7 @@ timezone:
 ## If your site is put in a subdirectory, set url as 'http://yoursite.com/child' and root as '/child/'
 url: http://wudaijun.com
 root: /
-permalink: :year/:month/:day/:title/
+permalink: :year/:month/:title/
 permalink_defaults:
 
 # Directory
