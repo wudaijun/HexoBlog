@@ -1,5 +1,7 @@
 # 第一次Clone下来，需要在当前目录执行该命令
 init:
+	# 参见: https://hexo.io/zh-cn/docs/index.html
+	# 尽量通过教程方式安装 nvm npm hexo 工具链
 	make theme
 	npm install
 	npm install hexo-server --save
@@ -20,7 +22,7 @@ deploy:
 server:
 	hexo generate
 	cp -r source/assets public/
-	hexo server
+	hexo server -p 4444
 
 theme:
 	git clone https://github.com/wudaijun/Hexo-theme-light_cn themes/light-cn
