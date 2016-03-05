@@ -133,65 +133,68 @@ list和tuple是erlang中用得最多的数据结构，也是其它一些数据�
 
 map是OTP 17引进的数据结构，是一个boxed对象，它支持任意类型的Key，模式匹配，动态增删Key等，并且最新的[mongodb-erlang][mongodb-erlang]直接支持map。
 
-map的内存结构为：
+在[OTP17][erlang_otp_17_src]中，map的内存结构为：
 
 	 {% codeblock lang:c %} 
 	//位于 $OTP_SRC/erts/emulator/beam/erl_map.h
-	typedef struct flatmap_s {
+	typedef struct map_s {
 	    Eterm thing_word;	// 	boxed对象header
 	    Uint  size;			// 	map 键值对个数
 	    Eterm keys;      	// 	keys的tuple
-	} flatmap_t;
+	} map_t;
 	{% endcodeblock %}
 
-该结构体之后就是依次存放的Value，因此maps的find操作，需要先遍历keys tuple，找到key所在下标，然后在value中取出该下标偏移对应的值。因此是O(n)复杂度的。参见maps:find源码：
+该结构体之后就是依次存放的Value，因此maps的get操作，需要先遍历keys tuple，找到key所在下标，然后在value中取出该下标偏移对应的值。因此是O(n)复杂度的。参见maps:get源码：
 
 	 {% codeblock lang:c %} 
-	//位于 $OTP_SRC/erts/emulator/beam/erl_map.h
-	erts_maps_get(Eterm key, Eterm map)
-	{
-	    Uint32 hx;
-	    if (is_flatmap_rel(map, map_base)) {
-			Eterm *ks, *vs;
-			flatmap_t *mp;
-			Uint n, i;
+	//位于 $OTP_SRC/erts/emulator/beam/erl_map.c
+	int erts_maps_get(Eterm key, Eterm map, Eterm *value) {
+	    Eterm *ks,*vs;
+	    map_t *mp;
+	    Uint n,i;
 		
-			mp  = (flatmap_t *)flatmap_val_rel(map, map_base);
-			n   = flatmap_get_size(mp);
-		
-			if (n == 0) {
-			    return NULL;
-			}
-			// 取出keys tuple 跳过tuple boxed header
-			ks  = (Eterm *)tuple_val_rel(mp->keys, map_base) + 1;
-			// 取出 values起始地址 偏移为flatmap_t的大小
-			// #define flatmap_get_values(x) (((Eterm *)(x)) + 3)
-			vs  = flatmap_get_values(mp);
-			
-			// 如果key是立即数 直接比较
-			if (is_immed(key)) {
-			    for (i = 0; i < n; i++) {
-					if (ks[i] == key) {
-					    return &vs[i];
-					}
-			    }
-			}
-			// 否则通过eq_rel比较 Eterm
-			for (i = 0; i < n; i++) {
-			    if (eq_rel(ks[i], map_base, key, NULL)) {
-					return &vs[i];
-			    }
-			}
-			return NULL;
-	    }
-	    ASSERT(is_hashmap_rel(map, map_base));
-	    hx = hashmap_make_hash(key);
+	    mp  = (map_t*)map_val(map);
+	    n   = map_get_size(mp);
 	
-	    return erts_hashmap_get_rel(hx, key, map, map_base);
+	    if (n == 0)
+		return 0;
+		
+		// 备注：
+		//#define map_get_values(x)      (((Eterm *)(x)) + 3)
+		//求出Values的起始位置，其中3 = sizeof(map_t)/sizeof(Eterm)
+		//#define map_get_keys(x)        (((Eterm *)tuple_val(((map_t *)(x))->keys)) + 1)
+		//求出Keys的起始位置，map_t中的keys指向存放keys的tuple，其中1为tuple的Head，里面包含tuple的大小
+	    ks  = map_get_keys(mp);
+	    vs  = map_get_values(mp);
+		
+		//对立即数的比较优化
+	    if (is_immed(key)) {
+		for( i = 0; i < n; i++) {
+		    if (ks[i] == key) {
+			*value = vs[i];
+			return 1;
+		    }
+		}
+	    }
+		
+	    for( i = 0; i < n; i++) {
+		if (EQ(ks[i], key)) {
+		    *value = vs[i];
+		    return 1;
+		}
+	    }
+	    return 0;
 	}
 	{% endcodeblock %}
 
-实际使用中，maps效率还是非常高的，[这里][map_test]有一份maps和dict的简单测试函数，通常情况下，我们应当优先使用maps，比起dict，它在模式匹配，mongodb支持，可读性上都有很大优势。
+如此的maps，只能作为record的替用，并不是真正的Key->Value映射，因此不能存放大量数据。而在OTP18中，maps加入了针对于big map的hash机制，当maps:size < MAP_SMALL_MAP_LIMIT时，使用flatmap结构，也就是上述OTP17中的结构，当maps:size >= MAP_SMALL_MAP_LIMIT时，将自动使用hashmap结构来高效存取数据。MAP_SMALL_MAP_LIMIT在erl_map.h中默认定义为32。
+
+仍然要注意Erlang本身的变量不可变原则，每次执行更新maps，都会导致新开辟一个maps，并且拷贝原maps的keys和values，在这一点上，maps:update比maps:put更高效，因为前者keys数量不会变，因此无需开辟新的keys tuple，拷贝keys tuples ETerm即可。实际使用maps时：
+
+1. 更新已有key值时，使用update(:=)而不是put(=>)，不仅可以检错，并且效率更高
+2. 当key/value对太多时，对其进行层级划分，保证其拷贝效率
+
+实际测试中，OTP18中的maps在存取大量数据时，效率还是比较高的，[这里][map_test]有一份maps和dict的简单测试函数，可通过OTP17和OTP18分别运行来查看效率区别。通常情况下，我们应当优先使用maps，比起dict，它在模式匹配，mongodb支持，可读性上都有很大优势。
 
 #### 3. array
 
@@ -312,4 +315,5 @@ elements是一个tuple tree，即用tuple包含tuple的方式组成的树，叶�
 
 [mongodb-erlang]: https://github.com/comtihon/mongodb-erlang
 [map_test]: https://github.com/wudaijun/Code/blob/master/erlang/map_test.erl
-[erlang_otp_18_src]: http://www.erlang.org/download_release/29
+[erlang_otp_18_src]: https://github.com/erlang/otp/tree/maint-18
+[erlang_otp_17_src]: https://github.com/erlang/otp/tree/maint-17
