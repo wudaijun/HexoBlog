@@ -64,7 +64,7 @@ tuple实际上就是一个有头部的数组，其包含的Eterm在内存中紧�
 
 list和tuple是erlang中用得最多的数据结构，也是其它一些数据结构的基础，如record，map，摘下几个关于list，tuple操作的常用函数，便于加深对结构的理解：
 
-	 {% codeblock lang:c %} 
+{% codeblock lang:c %} 
 	// 位于 $OTP_SRC/erts/emulator/beam/bif.c
 	BIF_RETTYPE tuple_to_list_1(BIF_ALIST_1)
 	{
@@ -116,7 +116,7 @@ list和tuple是erlang中用得最多的数据结构，也是其它一些数据�
 	    }
 	    BIF_RET(res);
 	}
-	{% endcodeblock %}
+{% endcodeblock %}
 	
 可以看到，list，tuple中添加元素，实际上都是在拷贝Eterm本身，Erlang虚拟机会追踪这些引用，并负责垃圾回收。
 
@@ -135,18 +135,18 @@ map是OTP 17引进的数据结构，是一个boxed对象，它支持任意类型
 
 在[OTP17][erlang_otp_17_src]中，map的内存结构为：
 
-	 {% codeblock lang:c %} 
+{% codeblock lang:c %} 
 	//位于 $OTP_SRC/erts/emulator/beam/erl_map.h
 	typedef struct map_s {
 	    Eterm thing_word;	// 	boxed对象header
 	    Uint  size;			// 	map 键值对个数
 	    Eterm keys;      	// 	keys的tuple
 	} map_t;
-	{% endcodeblock %}
+{% endcodeblock %}
 
 该结构体之后就是依次存放的Value，因此maps的get操作，需要先遍历keys tuple，找到key所在下标，然后在value中取出该下标偏移对应的值。因此是O(n)复杂度的。参见maps:get源码：
 
-	 {% codeblock lang:c %} 
+{% codeblock lang:c %} 
 	//位于 $OTP_SRC/erts/emulator/beam/erl_map.c
 	int erts_maps_get(Eterm key, Eterm map, Eterm *value) {
 	    Eterm *ks,*vs;
@@ -185,7 +185,7 @@ map是OTP 17引进的数据结构，是一个boxed对象，它支持任意类型
 	    }
 	    return 0;
 	}
-	{% endcodeblock %}
+{% endcodeblock %}
 
 如此的maps，只能作为record的替用，并不是真正的Key->Value映射，因此不能存放大量数据。而在OTP18中，maps加入了针对于big map的hash机制，当maps:size < MAP_SMALL_MAP_LIMIT时，使用flatmap结构，也就是上述OTP17中的结构，当maps:size >= MAP_SMALL_MAP_LIMIT时，将自动使用hashmap结构来高效存取数据。MAP_SMALL_MAP_LIMIT在erl_map.h中默认定义为32。
 
@@ -206,14 +206,14 @@ Erlang有个叫array的结构，其名字容易给人误解，它有如下特性
 
 在实现上，array最外层被包装为一个record:
 
-	 {% codeblock lang:erlang %} 
+{% codeblock lang:erlang %} 
 	-record(array, {
 		size :: non_neg_integer(),	%% number of defined entries
 		max  :: non_neg_integer(),	%% maximum number of entries
 		default,	%% the default value (usually 'undefined')
 	    elements :: elements(_)     %% the tuple tree
 	}).
-	{% endcodeblock %}
+{% endcodeblock %}
 	
 elements是一个tuple tree，即用tuple包含tuple的方式组成的树，叶子节点就是元素值，元素默认以10个为一组，亦即完全展开的情况下，是一颗十叉树。但是对于没有赋值的节点，array用其叶子节点数量代替，并不展开：
 
@@ -244,7 +244,7 @@ elements是一个tuple tree，即用tuple包含tuple的方式组成的树，叶�
 
 由于完全展开的tuple tree是一颗完全十叉树，因此实际上array的自动扩容也是以10为基数的。在根据Index查找元素时，通过div/rem逐级算出Index所属节点:
 
-	 {% codeblock lang:erlang %} 
+{% codeblock lang:erlang %} 
 	%% 位于$OTP_SRC/lib/stdlib/src/array.erl
 	get(I, #array{size = N, max = M, elements = E, default = D})
 	  when is_integer(I), I >= 0 ->
@@ -296,7 +296,7 @@ elements是一个tuple tree，即用tuple包含tuple的方式组成的树，叶�
 	    expand(I, E, X, D);
 	set_1(I, E, X, _D) ->						% 到达叶子节点
 	    setelement(I+1, E, X).
-	{% endcodeblock %}
+{% endcodeblock %}
 
 更多细节可以参见源码，了解了这些之后，再来看看Erlang array和其它语言数组不一样的地方：
 
