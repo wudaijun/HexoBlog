@@ -1,48 +1,41 @@
+
 ### 分布式Erlang
-
-一个Erlang分布式系统由多个Erlang节点(node)组成，每一个节点即为一个Erlang虚拟机，这些节点可以彼此通信。不同节点节点上Pid之间通信(link,monitor等)，是完全透明的。
-
-一个节点要加入集群需要两个条件：
-
-1. 通过`-sname`或`-name`设置节点名字，前者在局域网中使用，后者在广域网中使用，两种命名方式的节点不能相互通信。
-2. 设置自己的cookie，可通过`-setcookie`设置，默认为'nocookie'，只有具备相同cookie的节点才能建立连接。
-
-Erlang节点之间通过TCP/IP建立连接并通信，集群中的节点是松散连接的(loosely connected)，只有当第一次用到其它节点名字时，才会和该节点建立连接(并且校验cookie)。但同时连接也是扩散(transitive)的，如果节点A尝试连接节点B，而节点B连接又连接了节点C，那么A也会尝试和C连接：
-
-	# node1
-	erl -sname "node1" -setcookie "123"                                                               
-	(node1@myhost)1> nodes().
-	[]
-
-	# node2
-	erl -sname "node2" -setcookie "123"                                                               
-	(node2@myhost)1> nodes().
-	[] % loosely connected
-	(node2@myhost)1> net_adm:ping('node1@myhost').
-	pong
-	(node2@myhost)1> nodes().
-	['node1@myhost']
-	
-	# node3
-	erl -sname "node3" -setcookie "123"
-	(node3@myhost)1> net_kernel:connect_node('node1@myhost').
-	true
-	(node3@myhost)2> nodes().
-	['node1@myhost', 'node2@myhost'] % transitive
-	
-要关闭Erlang节点的transitive行为，使用虚拟机启动选项`-connect_all false`。当节点挂点后，其上所有的连接都会被关闭，可通过`nodes()`来查看本节点连接的所有可见节点。
-
-Erlang节点通过epmd(Erlang Port Mapper Daemon)守护进程来获取节点名字到节点IP地址的映射，empd是每台电脑上的守护进程，
-
-### Erlang集群
 
 Erlang为分布式提供的基础设施
 
 1. 良好的函数式编程语义，为并发而生
-2. 统一的通信方式(Pid)，屏蔽底层通讯细节(Erlang进程间/系统进程间/物理机间)，将本地代码扩展为分布式程序非常容易
+2. 异步通信模型，屏蔽底层通讯细节(Erlang进程间/系统进程间/物理机间)，将本地代码扩展为分布式程序非常容易
 3. 透明的通信协议，完善的序列化/反序列化支持
 4. 完善的监控能力：监督(supervisor), 监视(monitor), 链接(link)等
 5. 其它分布式组件：如epmd, mnesia等
+
+### Erlang分布式基础
+
+#### 1. Erlang node
+
+一个Erlang分布式系统由多个Erlang节点(node)组成，每一个节点即为一个Erlang虚拟机，这些节点可以彼此通信。不同节点节点上Pid之间通信(link,monitor等)，是完全透明的。
+
+集群中每个Erlang节点都有自己的名字，通过`-sname`或`-name`设置节点名字，前者在局域网中使用，后者在广域网中使用，两种命名方式的节点不能相互通信。也可在节点启动后通过`net_kernel:start/1`来将一个独立节点转换为分布式节点。
+
+Erlang节点之间通过TCP/IP建立连接并通信，集群中的节点是松散连接的(loosely connected)，只有当第一次用到其它节点名字时，才会和该节点建立连接(并且校验cookie)。但同时连接也是扩散(transitive)的，比如现有节点A,B相连，C,D相连，此时节点B连接节点C，那么A,B,C,D将两两相连形成一个全联通集群。要关闭Erlang节点的transitive行为，使用虚拟机启动选项`-connect_all false`。当节点挂掉后，其上所有的连接都会被关闭，也可通过`erlang:disconnect_node/1`关闭与指定节点的连接。
+
+#### 2. cookie
+
+cookie是Erlang节点连接时的简单验证机制，只有具有相同cookie的节点才能连接。通过`-setcookie`选项或`erlang:set_cookie/2`设置cookie，后者可以为一个节点设置多个cookie，在连接不同的节点时使用不同的cookie，连接到多个集群中。如果没有指定，将使用`~/.erlang.cookie`中的字符串作为cookie。由于cookie是明文的，并且共享于所有节点，更像是一种分隔集群的方式，而不是一种安全机制。
+
+#### 3. hidden node
+
+通过为节点启动参数`-hidden`，让一个节点成为hidden节点，hidden节点与其它节点的连接不会扩展，它们必须被显示建立。通过`nodes(hidden)`或`nodes(connected)`才能看到与本节点连接的hidden节点。
+
+#### 4. epmd
+
+epmd(Erlang Port Mapper Daemon)是Erlang节点所在主机上的守护进程，Erlang节点通过epmd进程来维护集群中节点名字到节点物理地址的映射，epmd会在主机上第一个Erlang分布式节点启动时自动后台启动。
+
+#### 5. 
+
+### Erlang
+
+
 
 Erlang让构建一个分布式系统变得很简单，但事实上，分布式一点也不简单，在分布式系统中，有如下悖论：
 
