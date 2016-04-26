@@ -5,13 +5,13 @@ tags: erlang
 categories: erlang
 ---
 
-## 设计原则
+## 需求提出
 
-无单点，高可用性，强大的热更支持。
+基于我们的服务器需求，整个集群有很多node，node可根据其职责来划分，如player_node，master_node，pvp_node，每种node可有多个。其中master_node负责监控/管理所有业务逻辑node，新加入的node只需和master_node连接，即加入了整个集群。基于Erlang本身的分布式特性，当我在查找某个服务时，如某个PlayerId对应的player_server，我无需知道这个player_server位于哪个player_node上，甚至无需知道是否在本台物理机上，我只需获取到这个player_server的Pid，即可与其通信。显然地，为了将服务的使用者和服务本身解耦，我们需要维护这样一个 {PlayerId -> player_server Pid}的映射表，并且这个表是集群
 
-## 集群
+## 服务发现
 
-整个服务器可能有很多node，node可根据其职责来划分，如player_node，master_node，pvp_node，每种node可有多个。其中master_node负责连接和管理所有node，新加入的node只需和master_node连接，即加入了整个集群。
+服务发现本身可以看做是一个业务独立的"特殊服务"，它用于逻辑服务的注册/查找/配置信息共享。关于服务发现领域，已经有一些比较成熟的组件，如[etcd][etcd]。
 
 <!--more-->
 
@@ -41,25 +41,4 @@ set_process(Type, Id, Pid) -> ok | {error, Reason}
 del_process(Type, Id) -> ok
 ```
 
-
-##PlayerServer：
-
-数据库： [mongodb][]
-
-网络层： [ranch][]
-
-协议层： [protobuf][]
-
-为了更好地支持热更时的数据结构兼容性，我们将整个玩家数据PlayerData组织为dict，放在gen_server的State中。尽管对于交互性弱的游戏来说，将玩家数据模块化放在进程字典中更快更方便，但是在代码可读性和数据管理上，会更麻烦。而且将PlayerData置于gen_server state中的另一个好处是：所有消息处理都具备事务性。逻辑处理上遇到错误可通过抛异常的方式结束处理，消息分发器捕获异常，响应错误消息。整个消息处理中，PlayerData要么被正确处理，要么不变。
-
-将PlayerData组织为dict而不是record的原因有两个：一是为了更好地支持热更机制，二是[dict与mongodb的转换][dict_mongodb]比较方便。
-
-至于其它的Agent进程与Player进程关联，登录重登机制，都大同小异。现在在考虑的一件事是落地优化，目前实行的落地是直接覆写，没有进行字段跟踪或模块标记来优化。
-
-
-
-[mnesia]: http://wudaijun.com/2015/04/erlang-mnesia/
-[mongodb]: https://github.com/comtihon/mongodb-erlang
-[ranch]: https://github.com/ninenines/ranch
-[protobuf]: https://github.com/basho/erlang_protobuffs
-[dict_mongodb]: http://wudaijun.com/2015/07/erlang-mongodb/
+[etcd]: https://github.com/coreos/etcd
