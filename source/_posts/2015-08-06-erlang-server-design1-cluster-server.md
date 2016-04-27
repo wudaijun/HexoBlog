@@ -25,36 +25,32 @@ categories: erlang
 
 在GS中，我们在查找某个服务时，如某个PlayerId对应的player_server，我无需知道这个player_server位于哪个player_node上，甚至无需知道是否在本台物理机上，我只需获取到这个player_server的Pid，即可与其通信。显然地，为了将服务的使用者和服务本身解耦，我们需要维护这样一个 PlayerId -> player_server Pid 的映射表，并且这个表是集群共同访问的，这也就是服务发现的基本需求。
 
-在Erlang中，我们的服务本身通常是一个进程，即Pid，我们可以用分布式数据库mnesia实现一个简易的cluster_server，它处理的一件事是：根据不同Key值(Erlang Eterm)取出对应服务的Pid。cluster_server本身是节点唯一的进程，用于和mnesia交互，实现服务注册/服务查找。除了基础的服务发现，cluster_server还可以做：
+#### 服务注册/查找，状态共享
 
-- 负载均衡：在mnesia中记录所有节点的负载信息，在创建服务时，将服务分发到当前负载较轻的节点
-- 灾难恢复：如果节点挂掉了，节点上的所有服务将被注销(主动注销/失联注销)，通过master监控或者其它机制可以重新创建这个服务，此时服务会被分发到其它可用的节点进行创建，并且重新注册。
-- 配置共享：可以向集群中写入一些配置信息，如当前服务的状态(启动中，运行中)，当前节点的状态(负载量)等
+在Erlang中，我们的服务本身通常是一个进程，即Pid，我们可以用分布式数据库mnesia实现一个简易的cluster_server，它处理的一件事是：根据不同Key值(Erlang Term)取出对应服务的Pid。cluster_server本身是节点唯一的进程，用于和mnesia交互，实现服务注册/服务查找。为了方便使用，我将Key定义为一个type加一个id，表的初步定义如下：
 
-为了完成服务创建的动态分发，我们还需要知道哪些节点是可用的，因此需要还维护节点状态表。
+	-record(cluster_(TYPE)_process, {id, node, pid, share}).  % TYPE: pvp player 等  share: 用于状态共享
 
-	-record(cluster_node, {type, node, share}). % 用于服务创建
-	-record(cluster_(type)_process, {id, node, pid, share}). % 用于服务查找
-	
-其中cluster_node为所有node共享，`cluster_(type)_process` 一般为指定type的node共享。cluster_server提供如下接口：
+基于这张mnesia表，可以实现如下功能：
 
-```
-% Type: 进程类型(如player, pvp, agent)
-% Id:	进程ID，用于检索进程(如playerid)
-% Callback: 创建进程的回调MFA，可用于执行具体创建工作 如 player_sup:start_child(PlayerId)
-% Selector: 自定义的node筛选规则，用于选择创建该进程的node
-% 该函数通过事务确保MFA执行完成
-create_process(Type, Id, Callback, Selector) -> {ok, Record} | {error, Reason}
+1.  服务注册：通过事务保证写入的原子性，将不同类型的服务写入对应的表中
+2. 服务查找：根据不同的类型访问不同的表，用mnesia的ram_copies来优化读取，使读取像本地ets一样快
+3. 服务注销：在服务不可用或被终止时，通过事务删除对应表条目
+4. 状态共享：通过share字段可以获知服务的当前状态或配置
 
-% 根据进程类型和进程ID，获取进程
-get_process(Type, Id) -> {ok, Record} | {error, not_find}
+#### 服务创建，负载均衡
 
-% 添加进程到cluster_(Type)_process表中 Node即为当前node() 一般在进程init()和初始化完成之后调用
-set_process(Type, Id, Pid) -> ok | {error, Reason}
+上面实现了最简单的服务注册/查找机制，服务本身的创建和维护由服务提供者管理，在GS集群中，通常我们是希望所有的服务被统一监控和管理，比如某个服务节点挂了，那么上面的所有服务将被注销(主动注销/失联注销)，这个时候应该允许使用者或master重启该服务，将该服务分配到其它可用节点上。
 
-% 删除进程 一般在进程terminate时调用
-del_process(Type, Id) -> ok
-```
+因此我们还需要维护可用节点表，用于服务创建：
+
+	-record(cluster_(type)_process, {id, node, pid, share}).
+
+通过share字段，可以获取到节点当前的状态信息，比如当前负载，这样做负载均衡就比较容易了，将服务创建的任务分发到当前负载较轻的节点即可。
+
+#### 服务监控，灾难恢复
+
+对于关键的服务或者是无状态的服务，可以通过master来监控其状态，在其不可用时，对其进行选择性恢复。比如当某服务所在物理机断电或断网，此时上面的服务都来不及注销自己，通过`monitor_node/2`，master会在数次心跳检测失败后，收到`nodedown`消息，此时master节点可以代为注销失联结节点上所有服务，并且决定这些服务是否需要重建在其它节点上。
 
 [etcd]: https://github.com/coreos/etcd
 [zookeeper]: https://zookeeper.apache.org/
