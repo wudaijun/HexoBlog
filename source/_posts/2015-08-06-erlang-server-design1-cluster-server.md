@@ -1,8 +1,11 @@
 ---
 title: 开发笔记(1) cluster server
 layout: post
-tags: erlang
+tags:
+- erlang
+- distribution
 categories: erlang
+
 ---
 
 ### 服务发现

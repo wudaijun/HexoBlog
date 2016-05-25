@@ -1,7 +1,9 @@
 ---
 title: 开发笔记(6) 游戏服务器集群常见问题
-categories: erlang
-tags: erlang
+categories: gameserver
+tags: 
+- erlang
+- distribution
 layout: post
 
 ---

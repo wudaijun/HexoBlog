@@ -1,7 +1,9 @@
 ---
 title:  Erlang分布式探索(二) Erlang分布式支持
 layout: post
-tags: erlang
+tags:
+- erlang
+- distribution
 categories: erlang
 
 ---
