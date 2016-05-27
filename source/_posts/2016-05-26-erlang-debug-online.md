@@ -48,27 +48,32 @@ Erlang的CPU使用情况是比较难衡量的，由于Erlang虚拟机内部复�
 
 因此Erlang内部提供了一些更有用的测量参考，通过`erlang:statistics(scheduler_wall_time)`可以获得调度器钟表时间：
 
-	> erlang:system_flag(scheduler_wall_time, true).
-	false
-	> erlang:statistics(scheduler_wall_time).
-	[{{1,166040393363,9269301338549},
-	 {2,40587963468,9269301007667},
-	 {3,725727980,9269301004304},
-	 4,299688,9269301361357}] 
+```
+1> erlang:system_flag(scheduler_wall_time, true).
+false
+2> erlang:statistics(scheduler_wall_time).
+[{{1,166040393363,9269301338549},
+ {2,40587963468,9269301007667},
+ {3,725727980,9269301004304},
+ 4,299688,9269301361357}]
+```
+	 
 
 该函数返回`[{调度器ID, BusyTime, TotalTime}]`，BusyTime是调度器执行进程代码，BIF，NIF，GC等的时间，TotalTime是`cheduler_wall_time`打开统计以来的总调度器钟表时间，通常，直观地看BusyTime和TotalTIme的数值没有什么参考意义，有意义的是BusyTime/TotalTIme，该值越高，说明调度器利用率越高：
 
-	> Ts0 = lists:sort(erlang:statistics(scheduler_wall_time)), ok.
-	ok	
-	> Ts1 = lists:sort(erlang:statistics(scheduler_wall_time)), ok.
-	ok	
-	> lists:map(fun({{I, A0, T0}, {I, A1, T1}}) -> 	
-	{I, (A1 - A0)/(T1 - T0)} end, lists:zip(Ts0,Ts1)).	
-	[{1,0.01723977154806915},	
-	 {2,8.596423007719012e-5},	
-	 {3,2.8416950342830393e-6},	
-	 {4,1.3440177144802423e-6}
-	}]
+```
+1> Ts0 = lists:sort(erlang:statistics(scheduler_wall_time)), ok.
+ok	
+2> Ts1 = lists:sort(erlang:statistics(scheduler_wall_time)), ok.
+ok	
+3> lists:map(fun({{I, A0, T0}, {I, A1, T1}}) -> 
+	{I, (A1 - A0)/(T1 - T0)} end, lists:zip(Ts0,Ts1)).
+[{1,0.01723977154806915},	
+ {2,8.596423007719012e-5},	
+ {3,2.8416950342830393e-6},	
+ {4,1.3440177144802423e-6}
+}]
+```
 
 ### 进程
 
