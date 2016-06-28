@@ -1,32 +1,27 @@
 ---
-title: MongoDB 使用要点
+title: MongoDB 入门与读写技巧
 layout: post
 categories: database
 tags: mongodb
 
 ---
+## Why MongoDB
 
-
-## MongoDB大法好
-
-优点->
+优点：
 
 - 基于文档，更灵活，直观，敏捷地应对变化
 - 更好的ORM支持，读写更快（无需join）
 - 优异的内嵌文档支持（查询，索引...）
+- 性能优异
 
-缺点？
+缺点：
 
-- 弱一致性？
-- 文档管理（文档/集合大小，复杂度） -> 范式化，分片
-- 文档移动，磁盘碎片
-- 灵活性与原子性不可兼得
-- 事务支持？
-
-
-## 文档存储
-
-MongoDB中Bson文档的最大限制为16MB，超过这个限制的文档可能需要使用GridFs等其它手段来存储。
+- 弱一致性(最终一致性)
+- 文档管理（文档/集合大小，复杂度)
+- 文档移动开销
+- 内存/磁盘占用
+- 不支持事务操作
+- 没有成熟的运维工具
 
 ## 一. 查询
 
@@ -52,7 +47,7 @@ MongoDB中Bson文档的最大限制为16MB，超过这个限制的文档可能�
 
     > db.foo.find().snapshot()
 
-## 1.3 游标释放
+### 1.3 游标释放
 
 前面看到的游标都是客户端游标，每个客户端游标对应一个数据库游标，数据库游标会占用服务器资源，因此合理地尽快地释放游标是有必要的。以下几种情况将会释放数据库游标：
 
@@ -61,7 +56,7 @@ MongoDB中Bson文档的最大限制为16MB，超过这个限制的文档可能�
 - 客户端游标不在作用域(客户端游标被析构/GC)，会向服务器发送消息销毁对应数据库游标
 - 游标10分钟未被使用，数据库游标会自动销毁，可通过[noCursorTimeout][cursor.noCursorTimeout()](注意和[maxTimeMS][cursor.maxTimeMs()]的区别)取消游标超时
 
-## 1.4 cursor.explain()
+### 1.4 cursor.explain()
 
 游标的另一个很有用的函数是explain()，它能够提供`db.collection.find()`操作的详尽分析，包括
 
@@ -72,15 +67,15 @@ MongoDB中Bson文档的最大限制为16MB，超过这个限制的文档可能�
 
 这些信息对于开发期间的查询性能分析和索引的对比性测试是非常有帮助的，关于它的详细解释，参见[cursor.explain][cursor.explain]官方文档。
 
-## 1.5 读取策略
+### 1.5 读取策略
 
 在目前最新的MongoDB 3.2版本中，新加了读取策略([ReadConcern][read concern])，支持local和majority两种策略，前者直接读取当前的MongoDB实例，但是可能会读到副本集中不一致的数据，甚至可能回滚。majority策略读取那些已经被副本集大多数成员所认可的数据，因此数据不可能被回滚。目前majority并不被所有的MongoDB引擎所支持，具体要求和配置，参见官方文档。
 
-## 1.6 其它查询技巧
+### 1.6 其它查询技巧
 
-    1. 不要使用skip()来实现分页，这样每次都会查询所有文档，可利用每页最后一个文档中的key作为查询条件来获取下一页。
-    2. 获取随机文档，不要先将所有的文档都找出来，然后再随机。而是为所有的文档加一个随机Key，每次查询{"$gte":randomkey}或{"$lt":randomkey}即可
-    3. MongoDB对内嵌文档的支持非常完善，可通过{"key1.key2": value2}直接查询内嵌文档，也可以在内嵌文档Key上建立索引
+1. 不要使用skip()来实现分页，这样每次都会查询所有文档，可利用每页最后一个文档中的key作为查询条件来获取下一页。
+2. 获取随机文档，不要先将所有的文档都找出来，然后再随机。而是为所有的文档加一个随机Key，每次查询{"$gte":randomkey}或{"$lt":randomkey}即可
+3. MongoDB对内嵌文档的支持非常完善，可通过{"key1.key2": value2}直接查询内嵌文档，也可以在内嵌文档Key上建立索引
 
 ## 二. 写入
 
@@ -99,7 +94,9 @@ MongoDB支持灵活的写入策略([WriteConcern][write concern]):
 
 关于写入策略的具体实现，参见：http://www.mongoing.com/archives/2916
 
-### 2.2 
+### 2.2 文档增长
+
+
 
 [cursor.snapshot()]: "https://docs.mongodb.com/manual/reference/method/cursor.snapshot/"
 [cursor.noCursorTimeout()]: "https://docs.mongodb.com/manual/reference/method/cursor.noCursorTimeout/#cursor.noCursorTimeout"
