@@ -1,27 +1,10 @@
 ---
-title: MongoDB 入门与读写技巧
+title: MongoDB 读写要点
 layout: post
 categories: database
 tags: mongodb
 
 ---
-## Why MongoDB
-
-优点：
-
-- 基于文档，更灵活，直观，敏捷地应对变化
-- 更好的ORM支持，读写更快（无需join）
-- 优异的内嵌文档支持（查询，索引...）
-- 性能优异
-
-缺点：
-
-- 弱一致性(最终一致性)
-- 文档管理（文档/集合大小，复杂度)
-- 文档移动开销
-- 内存/磁盘占用
-- 不支持事务操作
-- 没有成熟的运维工具
 
 ## 一. 查询
 
@@ -40,6 +23,8 @@ tags: mongodb
 这时，查询被发往服务器，sell立即获取第一个块(前101个文档或前1M数据，取其小者)，这样下次调用next或hasNext时，就不必再次向服务器发起一次查询。客户端用完了第一组结果，shell会再次向服务器获取下一组结果(大小不超过4MB)， 直至结果全部返回。可通过[batchSize][cursor.batchSize()]设置游标返回的块的文档数量。
 
 注：如果在shell中，没有将返回的游标赋给一个var，shell将自动迭代游标20次，显示出前20调记录。
+
+<!--more-->
 
 ### 1.2 快照查询
 
@@ -65,11 +50,11 @@ tags: mongodb
 - 服务器信息：地址，端口，版本等
 - 分片信息：如果集合使用了分片，还会列出访问了哪个分片，即对应的分片信息
 
-这些信息对于开发期间的查询性能分析和索引的对比性测试是非常有帮助的，关于它的详细解释，参见[cursor.explain][cursor.explain]官方文档。
+这些信息对于开发期间的查询性能分析和索引的对比性测试是非常有帮助的，关于它的详细解释，参见[cursor.explain()][]官方文档。
 
 ### 1.5 读取策略
 
-在目前最新的MongoDB 3.2版本中，新加了读取策略([ReadConcern][read concern])，支持local和majority两种策略，前者直接读取当前的MongoDB实例，但是可能会读到副本集中不一致的数据，甚至可能回滚。majority策略读取那些已经被副本集大多数成员所认可的数据，因此数据不可能被回滚。目前majority并不被所有的MongoDB引擎所支持，具体要求和配置，参见官方文档。
+在目前最新的MongoDB 3.2版本中，新加了读取策略([ReadConcern][read concern])，支持local和majority两种策略，前者直接读取当前的MongoDB实例，但是可能会读到副本集中不一致的数据，甚至可能回滚。majority策略读取那些已经被副本集大多数成员所认可的数据，因此数据不可能被回滚。目前majority只被[WiredTiger][]存储引擎所支持。
 
 ### 1.6 其它查询技巧
 
@@ -94,12 +79,15 @@ MongoDB支持灵活的写入策略([WriteConcern][write concern]):
 
 关于写入策略的具体实现，参见：http://www.mongoing.com/archives/2916
 
-### 2.2 文档增长
+## 参考：
 
-
+MongoDB CURD概念： https://docs.mongodb.com/manual/core/crud/
 
 [cursor.snapshot()]: "https://docs.mongodb.com/manual/reference/method/cursor.snapshot/"
 [cursor.noCursorTimeout()]: "https://docs.mongodb.com/manual/reference/method/cursor.noCursorTimeout/#cursor.noCursorTimeout"
 [cursor.maxTimeMs()]: "https://docs.mongodb.com/manual/reference/method/cursor.maxTimeMS/"
 [cursor.batchSize()]: "https://docs.mongodb.com/manual/reference/method/cursor.batchSize/#cursor.batchSize"
 [write concern]: "https://docs.mongodb.com/manual/reference/write-concern/"
+[read concern]: "https://docs.mongodb.com/manual/reference/read-concern/"
+[MMAPv1]: "https://docs.mongodb.com/manual/core/mmapv1/"
+[WiredTiger]: "https://docs.mongodb.com/manual/core/WiredTiger/"

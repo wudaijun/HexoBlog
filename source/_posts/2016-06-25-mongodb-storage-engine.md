@@ -18,9 +18,9 @@ MongoDB3.2之前版本的默认引擎。
 
 ![](assets/image/mongodb/MMAPv1_storage_engine.png)
 
-MongoDB MMAPv1内部实现：    http://www.mongoing.com/archives/1484
+摘自：MongoDB MMAPv1内部实现：http://www.mongoing.com/archives/1484
 
-关键点：
+<!--more-->
 
 #### 1.1 文档移动
 
@@ -32,15 +32,13 @@ MongoDB MMAPv1内部实现：    http://www.mongoing.com/archives/1484
 
 padding factor这种方式看起来很智能，但是由于文档的record大小不一，在文档删除或移动之后，文档原来分配的空间很难被再次利用，从而造成了磁盘碎片，这也是MongoDB3.0之前数据占用磁盘空间大的主要原因之一。
 
-因此在MongoDB3.0之后，不再使用padding factor填充机制，而使用[Power of 2 Sized Allocations][]，为每个文档分配2的N次方的空间(超过2MB则变为2MB的倍数增长)，这样做即可以减少文档的移动，文档被删除或移动后的空间也可以被有序地组织起来，达成复用(只能被其所在collection的文档复用)。除了Power of 2 Sized Allocations外，MongoDB3.0还提供了[no padding][]分配策略，即只分配文档实际大小的磁盘空间，但应用程序需要确保文档大小不会增长。
+因此在MongoDB3.0之后，不再使用padding factor填充机制，而使用[Power of 2 Sized Allocations][]，为每个文档分配2的N次方的空间(超过2MB则变为2MB的倍数增长)，这样做既可以减少文档的移动，文档被删除或移动后的空间也可以被有序地组织起来，达成复用(只能被其所在collection的文档复用)。除了Power of 2 Sized Allocations外，MongoDB3.0还提供了[no padding][]分配策略，即只分配文档实际大小的磁盘空间，但应用程序需要确保文档大小不会增长。
 
-虽然Power of 2 Sized Allocations解决了磁盘碎片的问题，但改进后的MMAPv1引擎仍然在数据库级别分配文件，数据库中的所有集合和索引都混合存储在数据库文件中，因此磁盘空间无法无法即时自动回收的问题仍然存在(即使drop collection)。
+虽然Power of 2 Sized Allocations解决了磁盘碎片的问题，但改进后的MMAPv1引擎仍然在数据库级别分配文件，数据库中的所有集合和索引都混合存储在数据库文件中，并且删除或移动文档后的空间会被保留用以复用，因此磁盘空间无法无法即时自动回收的问题仍然存在(即使drop collection)。
 
 ### 2.并发能力
 
-在MongoDB3.0之前，只有MMAPv1存储引擎支持，并且只支持Database级的锁，有时候不得不刻意将数据分到多个数据库中提升并发能力。在MongoDB3.0之后，MMAPv1终于支持collection级的并发，并发效率提升了一个档次。
-
-参考：https://docs.mongodb.com/manual/faq/concurrency/#for-mmapv1
+在MongoDB3.0之前，只有MMAPv1存储引擎支持，并且只支持Database级的锁，有时候不得不刻意将数据分到多个数据库中提升并发能力。在MongoDB3.0之后，MMAPv1终于支持collection级的并发，并发效率提升了一个档次。参考[MongoDB concurrency FAQ][]。
 
 ### 3. 故障恢复
 
@@ -62,7 +60,7 @@ MongoDB version3.0中引入，在MongoDB3.2中，已将WiredTiger作为默认存
 
 ### 1. 并发能力
 
-文档级别的并发支持，WiredTiger通过MVCC实现文档级别的并发控制，即文档级别锁。这就允许多个客户端请求同时更新一个集合内存的多个文档。
+文档级别的并发支持，WiredTiger通过MVCC实现文档级别的并发控制，即文档级别锁。这就允许多个客户端请求同时更新一个集合内存的多个文档。更多MongoDB并发模型，参见[MongoDB concurrency FAQ][]。
 
 ### 2. 故障恢复
 
@@ -70,7 +68,7 @@ MongoDB version3.0中引入，在MongoDB3.2中，已将WiredTiger作为默认存
 
 checkpoint是数据库某一时刻的快照，每60s或超过2GB的变更日志执行一次，在写最新快照时，上一个快照仍然有效，防止MongoDB在快照落地时挂掉，在快照落地完成后，上一个快照将被删除。
 
-和MMAPv1一样，支持通过变更日志故障恢复，journal可与checkpoint集合使用，提供快速，可靠的数据恢复。可禁用wiredtiger journal，这在一定程度上可以降低系统开支，对于单点MongoDB来说，可能会导致异常关闭时丢失checkpoint之间的数据，对于复制集来说，可靠性稍高一点。
+和MMAPv1一样，支持通过变更日志故障恢复，journal可与checkpoint集合使用，提供快速，可靠的数据恢复。可禁用wiredtiger journal，这在一定程度上可以降低系统开支，对于单点MongoDB来说，可能会导致异常关闭时丢失checkpoint之间的数据，对于复制集来说，可靠性稍高一点。在MongoDB3.2之前的版本中，WiredTiger journal默认不会即时刷盘，系统宕机最多会丢失100MB journal数据。在3.2版本中，加入了默认60ms时间间隔刷盘条件。参见官方文档[journaling wiredtiger][]。
 
 ### 3. 磁盘占用
 
@@ -80,7 +78,7 @@ WiredTiger的另一个两点是支持日志，文档数据块，索引压缩，�
 
 ### 4. 内存占用
 
-WiredTiger支持内存使用容量配置，用户通过storage.wiredTiger.engineConfig.cacheSizeGB参数即可控制MongoDB所能使用的最大内存，该参数默认值为物理内存大小的一半。
+WiredTiger支持内存使用容量配置，用户可通过[WiredTiger CacheSize][]配置MongoDB WiredTiger所能使用的最大内存，在3.2版本中，该参数默认值为`max(60%Ram-1GB, 1GB)`。这个内存限制的并不是MongoDB所占用的内存，MongoDB还使用OS文件系统缓存(文件可能是被压缩过的)。
 
 ### 5. 遗留问题
 
@@ -99,14 +97,14 @@ WiredTiger支持内存使用容量配置，用户通过storage.wiredTiger.engine
 
 总结：为啥不用Redis？
 
-参考：
+## 参考：
 
 1. MongoDB Storage Engine: https://docs.mongodb.com/manual/core/storage-engines/
-1. MongoDB Storage FAQ: https://docs.mongodb.com/manual/faq/storage/
-1. MongoDB MMAPv1内部实现：    http://www.mongoing.com/archives/1484
-2. MongoDB WiredTiger内部实现：http://www.mongoing.com/archives/2540
-3. MongoDB存储特性与内部原理： http://shift-alt-ctrl.iteye.com/blog/2255580
-4. MongoDB3.0官方性能测试报告：http://www.mongoing.com/archives/862
+2. MongoDB Storage FAQ: https://docs.mongodb.com/manual/faq/storage/
+3. MongoDB MMAPv1内部实现：    http://www.mongoing.com/archives/1484
+4. MongoDB WiredTiger内部实现：http://www.mongoing.com/archives/2540
+5. MongoDB存储特性与内部原理： http://shift-alt-ctrl.iteye.com/blog/2255580
+6. MongoDB3.0官方性能测试报告：http://www.mongoing.com/archives/862
 
 [mmap]: "http://www.cnblogs.com/huxiao-tee/p/4660352.html"
 [no padding]: "https://docs.mongodb.com/manual/reference/command/collMod/#noPadding"
@@ -116,3 +114,6 @@ WiredTiger支持内存使用容量配置，用户通过storage.wiredTiger.engine
 [MMAPv1 journal]: "https://docs.mongodb.com/manual/core/mmapv1/#journal"
 [compat]: "https://docs.mongodb.com/manual/reference/command/compact/"
 [repairDatabase]: "https://docs.mongodb.com/manual/reference/command/repairDatabase/"
+[journaling wiredtiger]: "https://docs.mongodb.com/manual/core/journaling/#journaling-wiredtiger"
+[WiredTiger CacheSize]: "https://docs.mongodb.com/manual/reference/configuration-options/#storage.wiredTiger.engineConfig.cacheSizeGB"
+[MongoDB concurrency FAQ]: "https://docs.mongodb.com/manual/faq/concurrency/"
