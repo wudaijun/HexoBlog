@@ -16,7 +16,7 @@ MongoDB3.2之前版本的默认引擎。
 
 文档在磁盘中连续存放，文档所占用的磁盘空间包括文档数据所占空间和文档填充(padding)。
 
-![](assets/image/mongodb/MMAPv1_storage_engine.png)
+![](/assets/image/mongodb/MMAPv1_storage_engine.png)
 
 摘自：MongoDB MMAPv1内部实现：http://www.mongoing.com/archives/1484
 
