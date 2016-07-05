@@ -16,7 +16,7 @@ MongoDB3.2之前版本的默认引擎。
 
 文档在磁盘中连续存放，文档所占用的磁盘空间包括文档数据所占空间和文档填充(padding)。
 
-![](assets/image/mongodb/MMAPv1_storage_engine.png)
+![](/assets/image/mongodb/MMAPv1_storage_engine.png)
 
 摘自：MongoDB MMAPv1内部实现：http://www.mongoing.com/archives/1484
 
@@ -46,7 +46,7 @@ MongoDB默认记录所有的变更操作日志([journal][MMAPv1 journaling])并�
 
 ### 4. 内存占用
 
-由于MMAPv1使用[mmap][]来将数据库文件映射到内存中，MongoDB总是尽可能的多吃内存，以映射更多的数据文件。并且页面的换入换出基本交给OS控制(MongoDB不建议[修改][MMAPv1 journalflush频率])，因此，将MongoDB部署在更高RAM环境下，是提升性能的最有效的方式之一。
+由于MMAPv1使用[mmap][]来将数据库文件映射到内存中，MongoDB总是尽可能的多吃内存，以映射更多的数据文件。并且页面的换入换出基本交给OS控制(MongoDB不建议[修改][MMAPv1 journal]flush频率)，因此，将MongoDB部署在更高RAM环境下，是提升性能的最有效的方式之一。
 
 ### 5. 遗留问题
 
