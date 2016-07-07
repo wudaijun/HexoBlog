@@ -68,7 +68,7 @@ MongoDB version3.0中引入，在MongoDB3.2中，已将WiredTiger作为默认存
 
 checkpoint是数据库某一时刻的快照，每60s或超过2GB的变更日志执行一次，在写最新快照时，上一个快照仍然有效，防止MongoDB在快照落地时挂掉，在快照落地完成后，上一个快照将被删除。
 
-和MMAPv1一样，支持通过变更日志故障恢复，journal可与checkpoint集合使用，提供快速，可靠的数据恢复。可禁用wiredtiger journal，这在一定程度上可以降低系统开支，对于单点MongoDB来说，可能会导致异常关闭时丢失checkpoint之间的数据，对于复制集来说，可靠性稍高一点。在MongoDB3.2之前的版本中，WiredTiger journal默认不会即时刷盘，系统宕机最多会丢失100MB journal数据。在3.2版本中，加入了默认60ms时间间隔刷盘条件。参见官方文档[journaling wiredtiger][]。
+和MMAPv1一样，支持通过变更日志故障恢复，journal可与checkpoint集合使用，提供快速，可靠的数据恢复。可禁用wiredtiger journal，这在一定程度上可以降低系统开支，对于单点MongoDB来说，可能会导致异常关闭时丢失checkpoint之间的数据，对于复制集来说，可靠性稍高一点。在MongoDB3.2之前的版本中，WiredTiger journal默认在日志超过100MB时持久化journal一次，系统宕机最多会丢失100MB journal数据。在3.2版本中，加入了默认50ms时间间隔刷盘条件。参见官方文档[journaling wiredtiger][]。
 
 ### 3. 磁盘占用
 
