@@ -121,11 +121,11 @@ system.profile集合中，关键字段：op(操作类型), ns(操作集合), ts(
 更多[参考][db.collStats()]。
 
 
-[db.serverStatus()]: "https://docs.mongodb.com/manual/reference/command/serverStatus/"
-[mongostat]: "https://docs.mongodb.com/manual/reference/program/mongostat/"
-[Profiler]: "https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler/"
-[slowOpThresholdMs]: "https://docs.mongodb.com/manual/reference/configuration-options/#operationProfiling.slowOpThresholdMs"
-[modify slowOpThresholdMs]: "https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler/#database-profiling-specify-slowms-threshold"
-[db.currentOp()]: "https://docs.mongodb.com/manual/reference/method/db.currentOp/"
-[db.stats()]: "https://docs.mongodb.com/manual/reference/command/dbStats/"
-[db.collStats()]: "https://docs.mongodb.com/manual/reference/command/collStats/#dbcmd.collStats"
+[db.serverStatus()]: https://docs.mongodb.com/manual/reference/command/serverStatus/
+[mongostat]: https://docs.mongodb.com/manual/reference/program/mongostat/
+[Profiler]: https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler/
+[slowOpThresholdMs]: https://docs.mongodb.com/manual/reference/configuration-options/#operationProfiling.slowOpThresholdMs
+[modify slowOpThresholdMs]: https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler/#database-profiling-specify-slowms-threshold
+[db.currentOp()]: https://docs.mongodb.com/manual/reference/method/db.currentOp/
+[db.stats()]: https://docs.mongodb.com/manual/reference/command/dbStats/
+[db.collStats()]: https://docs.mongodb.com/manual/reference/command/collStats/#dbcmd.collStats

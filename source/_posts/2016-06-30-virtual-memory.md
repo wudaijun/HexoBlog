@@ -99,7 +99,7 @@ Linux将虚拟存储器组织成一些区域(段)的集合，一个区域就是�
 
 应用程序可通过malloc申请一块连续的虚拟内存，在Linux下，虚拟内存的布局规定了malloc申请位置以及大小，当malloc申请小于`MMAP_THRESHOLD`(目前为128KB)的内存时，分配的是在堆区，用sbrk()进行对齐生长，而malloc一次性申请大内存(大于128K)时，分配在映射区(位于堆栈之间)，而不是在堆区，glibc会返回一块匿名的mmap内存块。虽然malloc得到的虚拟内存对应用程序来说是连续的，而实际上可以是离散的物理页面，这一点大家都应该很清楚了。
 
-[mmap()用法详解]: "http://www.cnblogs.com/huxiao-tee/p/4660352.html"
-[Linux进程内存布局]: "http://www.cnblogs.com/fuzhe1989/p/3936894.html"
-[Linux地址翻译]: "http://www.ahlinux.com/start/kernel/6876.html"
-[交换文件(交换空间)]: "http://vod.sjtu.edu.cn/help/Article_Print.asp?ArticleID=1191"
+[mmap()用法详解]: http://www.cnblogs.com/huxiao-tee/p/4660352.html
+[Linux进程内存布局]: http://www.cnblogs.com/fuzhe1989/p/3936894.html
+[Linux地址翻译]: http://www.ahlinux.com/start/kernel/6876.html
+[交换文件(交换空间)]: http://vod.sjtu.edu.cn/help/Article_Print.asp?ArticleID=1191

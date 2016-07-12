@@ -106,14 +106,14 @@ WiredTiger支持内存使用容量配置，用户可通过[WiredTiger CacheSize]
 5. MongoDB存储特性与内部原理： http://shift-alt-ctrl.iteye.com/blog/2255580
 6. MongoDB3.0官方性能测试报告：http://www.mongoing.com/archives/862
 
-[mmap]: "http://www.cnblogs.com/huxiao-tee/p/4660352.html"
-[no padding]: "https://docs.mongodb.com/manual/reference/command/collMod/#noPadding"
-[Power of 2 Sized Allocations]: "https://docs.mongodb.com/manual/core/mmapv1/#power-of-2-sized-allocations"
-[padding factor]: "http://openmymind.net/Whats-A-Padding-Factor/"
-[MMAPv1 journaling]: "https://docs.mongodb.com/manual/core/journaling/#journaling-and-the-mmapv1-storage-engine"
-[MMAPv1 journal]: "https://docs.mongodb.com/manual/core/mmapv1/#journal"
-[compat]: "https://docs.mongodb.com/manual/reference/command/compact/"
-[repairDatabase]: "https://docs.mongodb.com/manual/reference/command/repairDatabase/"
-[journaling wiredtiger]: "https://docs.mongodb.com/manual/core/journaling/#journaling-wiredtiger"
-[WiredTiger CacheSize]: "https://docs.mongodb.com/manual/reference/configuration-options/#storage.wiredTiger.engineConfig.cacheSizeGB"
-[MongoDB concurrency FAQ]: "https://docs.mongodb.com/manual/faq/concurrency/"
+[mmap]: http://www.cnblogs.com/huxiao-tee/p/4660352.html
+[no padding]: https://docs.mongodb.com/manual/reference/command/collMod/#noPadding
+[Power of 2 Sized Allocations]: https://docs.mongodb.com/manual/core/mmapv1/#power-of-2-sized-allocations
+[padding factor]: http://openmymind.net/Whats-A-Padding-Factor/
+[MMAPv1 journaling]: https://docs.mongodb.com/manual/core/journaling/#journaling-and-the-mmapv1-storage-engine
+[MMAPv1 journal]: https://docs.mongodb.com/manual/core/mmapv1/#journal
+[compat]: https://docs.mongodb.com/manual/reference/command/compact/
+[repairDatabase]: https://docs.mongodb.com/manual/reference/command/repairDatabase/
+[journaling wiredtiger]: https://docs.mongodb.com/manual/core/journaling/#journaling-wiredtiger
+[WiredTiger CacheSize]: https://docs.mongodb.com/manual/reference/configuration-options/#storage.wiredTiger.engineConfig.cacheSizeGB
+[MongoDB concurrency FAQ]: https://docs.mongodb.com/manual/faq/concurrency/
