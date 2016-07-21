@@ -1,5 +1,5 @@
 ---
-title:  Erlang实践(2) 线上调试
+title:  Erlang实践(2) 状态监控
 layout: post
 tags: erlang
 categories: erlang
@@ -36,7 +36,44 @@ categories: erlang
 		Eshell Vx.x.x (abort with ^G)
 		1>
 
-## 状态监控
+
+## etop
+
+etop是Erlang提供的类似于top命令，它的输出格式和功能都与top类似，提供了必要的节点信息和进程信息。常用用法：
+
+	% 查看占用CPU最高的进程 每10秒输出一次
+	> spawn(fun() -> etop:start([{interval,10}, {sort, runtime}]) end). 
+	% 查看占用内存最高的进程 每10秒输出一次 输出进程数量为20
+	> spawn(fun() -> etop:start([{interval,10}, {sort, memory, {lines,20}}]) end). 
+	% 连接远程节点方式一
+	> erl -name abcd@127.0.0.1 -hidden -s etop -output text -sort memory -lines 20 -node 'server_node@127.0.0.1' -setcookie galaxy_server
+	% 连接远程节点方式二
+	> erl -name abc@127.0.0.1 -hidden  -setcookie galaxy_server
+	> etop:start([{node,'server_node@127.0.0.1'}, {output, text}, {lines, 20},  {sort, memory}]).
+	% 连接远程节点方式三
+	> erl -name abc@127.0.0.1 -setcookie galaxy_server
+	>  rpc:call('server_node@127.0.0.1', etop, start, [[{output, text}, {lines, 20},  {sort, memory}]]).
+	
+输出样例(截断为前5条)：
+
+	========================================================================================
+	 'def@127.0.0.1'                                                           09:38:01
+	 Load:  cpu         0               Memory:  total       14212    binary         40
+	        procs      35                        processes    4398    code         4666
+	        runq        0                        atom          198    ets           304
+	
+	Pid            Name or Initial Func    Time    Reds  Memory    MsgQ Current Function
+	----------------------------------------------------------------------------------------
+	<6858.7.0>     application_controll     '-'    7830  426552       0 gen_server:loop/6
+	<6858.12.0>    code_server              '-'  125106  284656       0 code_server:loop/1
+	<6858.33.0>    erlang:apply/2           '-'   10300  230552       0 shell:get_command1/5
+	<6858.3.0>     erl_prim_loader          '-'  211750  122040       0 erl_prim_loader:loop
+	<6858.0.0>     init                     '-'    3775   18600       0 init:loop/1
+	========================================================================================
+
+官方文档：http://erlang.org/doc/apps/observer/etop_ug.html
+
+## erlang自带模块
 
 ### 内存
 
@@ -83,13 +120,7 @@ ok
 
 - dictionary: 			进程字典中所有的数据项
 - registerd_name: 	注册的名字
-- status:				进程状态，包含: 
- 	- waiting: 等待消息中
- 	- running: 运行中
- 	- runnable: 准备就绪，尚未被调度  
- 	- exiting: 进程已结束，但未被完全清除
- 	- garbage_collecting: GC中
- 	- suspended: 挂起中
+- status:				进程状态
 - links: 				所有链接进程
 - monitored_by:		所有监控当前进程的进程
 - monitors:			所有被当前进程监控的进程
@@ -115,17 +146,19 @@ ok
 - sys:terminate(Pid, Reason):		向指定进程发消息，终止该进程
 
 
-## 第三方工具
+## recon
 
-- 更多测量CPU和性能的工具和模块：[eprof][]，[fprof][]，[eflame][]。
-- learnyousomeerlang作者写的一个库： [recon][]
+[recon][]是[learn you some erlang][]的作者写的一个非常强大好用的库，将erlang散布在各个模块的调试函数整合起来，以更易用和可读的方式提供给用户，包含了信息统计，健康状态分析，动态追踪调试等一整套解决方案。并且本身只是一系列的API，放入rebar deps即可attach上节点使用，强烈推荐。
+
+详细用法参见：http://ferd.github.io/recon/
+
+## 更多资料
+
 - Erlang实践红宝书：[Erlang In Anger][]
 
 
 
 [erl_call]: http://erlang.org/doc/man/erl_call.html
-[eprof]: http://www.erlang.org/doc/man/eprof.html
-[fprof]: http://www.erlang.org/doc/man/fprof.html
-[eflame]: https://github.com/proger/eflame
 [recon]: https://github.com/ferd/recon
-[Erlang In Anger]: hhttp://pan.baidu.com/s/1gfCZBKf
+[Erlang In Anger]: http://pan.baidu.com/s/1gfCZBKf
+[learn you some erlang]: http://learnyousomeerlang.com/
