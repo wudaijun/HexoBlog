@@ -44,7 +44,7 @@ etop是Erlang提供的类似于top命令，它的输出格式和功能都与top�
 	% 查看占用CPU最高的进程 每10秒输出一次
 	> spawn(fun() -> etop:start([{interval,10}, {sort, runtime}]) end). 
 	% 查看占用内存最高的进程 每10秒输出一次 输出进程数量为20
-	> spawn(fun() -> etop:start([{interval,10}, {sort, memory, {lines,20}}]) end). 
+	> spawn(fun() -> etop:start([{interval,10}, {sort, memory}, {lines,20}]) end). 
 	% 连接远程节点方式一
 	> erl -name abcd@127.0.0.1 -hidden -s etop -output text -sort memory -lines 20 -node 'server_node@127.0.0.1' -setcookie galaxy_server
 	% 连接远程节点方式二
