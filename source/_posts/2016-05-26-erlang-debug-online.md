@@ -1,5 +1,5 @@
 ---
-title:  Erlang实践(2) 状态监控
+title:  Erlang 状态监控
 layout: post
 tags: erlang
 categories: erlang

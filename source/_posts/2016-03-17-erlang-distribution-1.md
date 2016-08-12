@@ -1,5 +1,5 @@
 ---
-title: Erlang分布式探索(一) 分布式系统基础
+title: Erlang 分布式系统(1)
 layout: post
 categories: erlang
 tags: erlang
