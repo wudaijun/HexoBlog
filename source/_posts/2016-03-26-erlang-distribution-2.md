@@ -1,5 +1,5 @@
 ---
-title:  Erlang分布式探索(二) Erlang分布式支持
+title:  Erlang 分布式系统(2)
 layout: post
 tags:
 - erlang

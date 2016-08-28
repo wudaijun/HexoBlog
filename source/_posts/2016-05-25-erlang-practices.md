@@ -1,5 +1,5 @@
 ---
-title:  Erlang实践(1) 设计原则
+title:  Erlang 实践经验
 layout: post
 tags: erlang
 categories: erlang

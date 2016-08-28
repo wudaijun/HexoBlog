@@ -83,11 +83,11 @@ MongoDB支持灵活的写入策略([WriteConcern][write concern]):
 
 MongoDB CURD概念： https://docs.mongodb.com/manual/core/crud/
 
-[cursor.snapshot()]: "https://docs.mongodb.com/manual/reference/method/cursor.snapshot/"
-[cursor.noCursorTimeout()]: "https://docs.mongodb.com/manual/reference/method/cursor.noCursorTimeout/#cursor.noCursorTimeout"
-[cursor.maxTimeMs()]: "https://docs.mongodb.com/manual/reference/method/cursor.maxTimeMS/"
-[cursor.batchSize()]: "https://docs.mongodb.com/manual/reference/method/cursor.batchSize/#cursor.batchSize"
-[write concern]: "https://docs.mongodb.com/manual/reference/write-concern/"
-[read concern]: "https://docs.mongodb.com/manual/reference/read-concern/"
-[MMAPv1]: "https://docs.mongodb.com/manual/core/mmapv1/"
-[WiredTiger]: "https://docs.mongodb.com/manual/core/WiredTiger/"
+[cursor.snapshot()]: https://docs.mongodb.com/manual/reference/method/cursor.snapshot/
+[cursor.noCursorTimeout()]: https://docs.mongodb.com/manual/reference/method/cursor.noCursorTimeout/#cursor.noCursorTimeout
+[cursor.maxTimeMs()]: https://docs.mongodb.com/manual/reference/method/cursor.maxTimeMS/
+[cursor.batchSize()]: https://docs.mongodb.com/manual/reference/method/cursor.batchSize/#cursor.batchSize
+[write concern]: https://docs.mongodb.com/manual/reference/write-concern/
+[read concern]: https://docs.mongodb.com/manual/reference/read-concern/
+[MMAPv1]: https://docs.mongodb.com/manual/core/mmapv1/
+[WiredTiger]: https://docs.mongodb.com/manual/core/WiredTiger/
