@@ -37,5 +37,19 @@ categories: erlang
 
 可以在agent消息路由处，将map相关消息直接路由到map，而map业务处理完成之后，如果不需要在玩家身上增减资源，则可以直接将Ack发到玩家对应的agent上，流程得以简化。
 
+### 总结
+
+目前服务器的分布式特性：
+
+- 按照ServerId组成一颗大的监督树，一个Server及其所有包含模块，均作为整体部署在一个server_node上。这样Server内部的逻辑与数据得以聚合。而负载均衡将以Server为基本单位
+- 在节点内部，为了方便交互，仍然使用Mnesia作服务注册与发现，但由于Server之间没有隔离，要求服务ID全局唯一
+- 对于单服管理，可能需要一个进程维护一个Server的同类服务(player, alliance)，以进行LRU，全服广播等服务器逻辑
+
+可选的优化方案：
+
+- 服务隔离：对各Server之间的服务进行隔离。隔离的好处：一是减轻Mnesia单表压力，二是对Server逻辑有更好的支撑：如全服通知，停服操作。但就Mnesia来说，我目前没有找到好的隔离方案
+- 本地服务：一些服务是否可以优化至单节点读写，这样Mnesia可退化为ETS，换来更好读取速度，并且极大减轻Mnesia压力
+- 控制节点数量：删除不必要的Mnesia节点，通过消息而不是Mnesia来同步服务
+
 [cluster_server]: http://wudaijun.com/2015/08/erlang-server-design1-cluster-server/
 
