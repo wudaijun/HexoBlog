@@ -3,9 +3,7 @@ layout: post
 title: shared_ptr的引用链
 categories:
 - c/c++
-tags:
-- c/c++
-- multi-thread
+tags: c/c++
 
 ---
 总结下几个使用shared_ptr需要注意的问题:

@@ -2,9 +2,7 @@
 layout: post
 title: c++ disruptor 无锁消息队列
 categories:
-- gameserver
-tags:
-- multi-thread
+- c/c++
 ---
 
 前段时间关注到[disruptor][1]，一个高并发框架。能够在无锁(lock-free)的情况下处理多生产者消费者的并发问题。它可以看作一个消息队列，通过[CAS][2]而不是锁来处理并发。

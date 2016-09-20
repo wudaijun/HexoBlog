@@ -2,9 +2,8 @@
 layout: post
 title: false sharing
 categories:
-- gameserver
-tags:
-- multi-thread
+- os
+
 ---
 在多核的CPU架构中，每一个核心core都会有自己的缓存行(cache line)，因此如果一个变量如果同时存在不同的核心的cache line时，就会出现伪共享（false sharing)的问题。此时如果一个核心修改了该变量，该修改需要同步到其它核心的缓存。
 
