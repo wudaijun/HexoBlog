@@ -41,7 +41,7 @@ private:
 
 而对于如下四种情况，编译器隐式生成的默认构造函数(以下简称"隐式构造函数")是 nontrivial default constructor ：
 
-####a. 类中有 "带 nontrivial default constructor" 的对象成员
+#### a. 类中有 "带 nontrivial default constructor" 的对象成员
 
 注意，这里的notrivial default constructor包括**用户定义的任何构造函数**或者**编译器生成的notrivial构造函数**。这实际上是一个递归定义，当类X中有具备notrivial default constructor的对象成员Y \_y时，X的隐式构造函数需要调用Y的默认构造函数完成对成员\_y的构造。如：
 	
@@ -62,15 +62,15 @@ private:
 
 我们说类B中的对象成员 A \_a "不带default constructor"，因为它只有一个隐式生成的 trivial default constructor。因此B的隐式构造函数中，无需操心对成员_a的构造。因而实际上B的隐式构造函数也被视为trivial(无关紧要)。而对于类C，由于其对象成员类型string具备用户(库作者)声明的默认构造函数，因此string的构造函数是nontrivial，所以编译器在为C合成的默认构造函数中，需要调用string的默认构造函数来为\_str初始化，此时C的构造函数便不再是"无关紧要"的，被视为 nontrivial。
 
-####b. 类继承于 "带 nontrivial default constructor" 的基类
+#### b. 类继承于 "带 nontrivial default constructor" 的基类
 
 情形b和情形a类似：当类具有 "带 nontrivial default constructor"的基类时，编译器隐式生成的默认构造函数需要调用基类的默认构造函数确保基类的正确初始化。此时该类构造函数视为nontrivial。
 
-####c. 类中有虚函数(或继承体系中有虚函数)
+#### c. 类中有虚函数(或继承体系中有虚函数)
 
 在这种情况下，编译器生成的隐式构造函数需要完成对虚函数表vtable的构造，并且将vtable的指针安插到对象中(通常是头四个字节)。此时的隐式构造函数自然是必不可少(nontrivial)。
 
-####d. 类的继承体系中具有虚基类
+#### d. 类的继承体系中具有虚基类
 
 和情形c一样，编译器需要在合成的构造函数中，对虚基类进行处理(处理方式和虚函数类似，通过一个指针来指向虚基类，以保证虚基类在其继承体系中，只有一份内容)，这样才能保证程序能在运行中正确存取虚基类数据。被视为nontrivial。
 

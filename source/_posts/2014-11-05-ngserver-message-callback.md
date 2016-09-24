@@ -17,7 +17,7 @@ tags:
 
 事实上，基于UserMessage中的Player指针，我们可以实现上面的调用方式，现在就需要通过一种或多种的注册回调机制，来实现对各种响应函数形式的注册和回调。
 
-##使用消息注册与回调
+## 使用消息注册与回调
 
 消息的注册通过指定消息ID和消息响应函数来完成，注册函数主要有如下形式：
 
@@ -120,7 +120,7 @@ bool MapService::ProcessMsg(UserMessage* msg)
 
 在`bool MapService::ProcessMsg(UserMessage* msg)`中，取出UserMessage中的PlayerPtr指针，将其与ProtocolReader一起打包成std::pair，而事实上，这个pair才是最终的解码器，在这一点上，也可以专门写一个UserMessageReader类来读取UserMessage的Player指针，以及消息数据。后面也会向这方面改进。可以注意到这个pair也是 _player_delegate的DelegateManager模板参数,下面介绍DelegateManager.
 
-####DelegateManager
+#### DelegateManager
 
 DelegateManager是一个模板类，它第一个模板参数Decoder，是解码器
 

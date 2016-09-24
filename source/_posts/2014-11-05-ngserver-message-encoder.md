@@ -11,7 +11,7 @@ tags:
 
 <!--more-->
 
-###一. 消息编码格式
+### 一. 消息编码格式
 NGServer的消息分为首部和消息体，首部共四个字节，包括消息长度(包括首部)和消息ID，各占两个字节。消息体为消息编码后的二进制数据。
 
 在消息体中，针对于不同的数据类型而不同编码。对于POD类型，直接进行内存拷贝，对于非POD类型，如标准库容器，则需要自定义编码格式，以下是几种最常见的数据类型编码：
@@ -21,7 +21,7 @@ std::vector 先写入vector的元素个数(占两个字节)，在对其元素逐
 std::list	编码方式与vector类似
 T arr[N]	对于这种类型，不需要写入元素个数，因为在消息结构体中指出了固定长度N，因此可以通过模板推导得到N。所以递归写入N个元素T即可。对于简单数据类型T，如T为char时，可以通过模板特例化对其优化。
 
-###二. ProtocolStream
+### 二. ProtocolStream
 
 NGServer的消息编解码依靠两个类：ProtocolReader和ProtocolWriter。这两个类派生于ProtocolStream，ProtocolStream简单维护一个用于编码或解码的线性缓冲区，并记录缓冲区的当前状态，如总大小，当前偏移，等等。一个ProtocolStream的缓冲区即代表一条消息，因此它ProtocolReader/ProtocolWriter总是在缓冲区头四个字节中读出或写入消息长度和消息ID。
 
@@ -35,7 +35,7 @@ bool ProtocolReader::AutoDecode(T& t);
 Decode在缓冲区的当前偏移处，读出数据t，并返回操作结果。而根据T的类型不同，读取方式也不一样，这需要通过模板推导来完成。
 
 
-###三. 数据类型
+### 三. 数据类型
 
 T的类型概括有四种：
 
@@ -70,7 +70,7 @@ struct A2
 
 这里说的POD指的是 std::is\_trivial<T\>::value && std::is\_standard\_layout<T\>::value
 
-###四. ProtocolReader解码推导流程
+### 四. ProtocolReader解码推导流程
 推导流程如下：
 
 **1.如果T是C数组类型 (std::is_array<T>::value == true)**，那么下一个推导模型应该为：
@@ -232,7 +232,7 @@ bool DecodeArray(S& s, T& t)
 注意，对数组元素或标准库容器元素解码时，都调用AutoDecode，这是因为如果容器元素是用户自定义的非POD类型，那么可以通过用户重载的AutoDecode进行正确解码。总之，对于未知类型，都应该通过AutoDecode确保用户自定义类型得到正确解码。而Decode只针对于两种类型：POD类型和标准库容器类型，对于前者默认内存拷贝，对于后者通过AutoDecode对元素逐个解码。如果用户没有提供自定义类型的AutoDecode特例化，那么Decode判断其POD类型并执行内存拷贝，如果该类型不是POD类型，那么static_assert将在编译器给出错误："is not trivial. need to customize" 或 "is not standard layout. need to customize"。
 而C数组通过在AutoDecode转向分支DecodeArray，DecodeArray完成元素个数解析之后，也通过AutoDecode对元素递归解码。
 
-###五. 自定义消息类型的特例化
+### 五. 自定义消息类型的特例化
 
 自定义的非POD消息类型A2的特例化如下：
 
@@ -303,7 +303,7 @@ bool AutoDecode(ProtocolReader& s, A3& t)
 
 即可。
 
-###七. 回到ProtocolReader
+### 七. 回到ProtocolReader
 ProtocolReader通过Decode函数转向全局模板推导，最后再回到ProtocolReader进行缓冲读取，由于ProtocolReader缓冲区对应于一条消息，因此解码的缓冲区offset偏移初始化为4(前四个字节为消息头部)。它提供基本类型和string的读取，最后附上主要代码：
 
 ```

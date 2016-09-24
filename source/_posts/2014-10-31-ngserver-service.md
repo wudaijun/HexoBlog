@@ -13,7 +13,7 @@ NGServer的核心概念便是服务(Service)，它对逻辑层表现为一个线
 
 下面由下至上对Service框架和运行机制简单阐述：
 
-##Message定义
+## Message定义
 NGServer中的消息定义于Message.h中，主要定义了如下几种消息，它们的继承体系如下：
 
  ![](/assets/image/ngserver/NGServer_Message_Hierarchy.png "Message继承体系")
@@ -71,7 +71,7 @@ public:
 
 对于其他消息放到后面介绍。纵观Message，通过继承完成对多类消息的分类处理，通过模板和继承完成对消息类的扩展，而模板参数则为消息结构(对于InsideMessageT)或其它附加成员(对UserMessageT)。
 
-##Service 服务
+## Service 服务
 
 整个NGServer核心概念便是Service,Service完成传统游戏服务器一个线程的任务，但它不完全是线程。目前先把它看作是一个线程。在NGServer中，包含如下Service：
 
@@ -90,7 +90,7 @@ LoginService(登录服务) MapService(地图服务)  DBService(数据库服务) 
 
 ![](/assets/image/ngserver/NGServer_Service_ClassInterface.png "Service类接口")
 
-###Service
+### Service
 Service包含一个消息队列MessageQueue,保存待处理的消息。MessageQueue和ByteBuff类似，使用双缓冲。每个Service都包含一个_sid用于唯一标识自己。以下是一些主要接口：
 
 ```
@@ -109,7 +109,7 @@ Service::Send( int32_t sid, Message* msg ) // 静态函数 将msg转发到sid对
 
 ```
 
-###GameService
+### GameService
 GameService是游戏业务逻辑处理服务的基类，它主要在Service的基础上加入服务器的具体业务，主要扩展了：
 
 - 关联PlayerManager
@@ -139,10 +139,10 @@ Service::Receive() -> Service::ReceiveMsg(msg) -> GameService::ProcessMsg(msg) -
 
 Send(char* data, int len)是纯虚函数接口，用于服务具体定义如何将消息发送到所管理的所有用户(群发)。
 
-###DBService LogService
+### DBService LogService
 相对于GameService，LogService和DBService则要简单许多，它们负责接收GameService发来的消息，并且将记录写入日志或数据库。因此它们只处理InsideMsg消息。并不处理具体的玩家业务逻辑(UserMessage)，它们与数据库和日志系统打交道。但是由于直接派生于Service，因此对比于GameService，它们也需要消息注册与回调机制。另外，由于Service在运行时是单线程的(后面ServiceManager中解释)，因此它的处理是串行的，所以它可以通过记录_last_recv_service_id 来对源Service进行响应。比如响应数据库操作结果等。这样就实现了纯异步的交互。
 
-###LoginService MapService
+### LoginService MapService
 得益于GameService的再次封装，具体业务处理服务就真的只需要关心业务逻辑了，让我们以用户登录为例，看看LoginService需要做些什么：
 
 1. 通过RegistPlayer注册用户登录消息响应函数OnPlayerLogin(Player& player, C2S\_Login& msg) 并注册数据库响应消息 OnDBHeroLogin(Player& player, D2S\_Login& msg) 
@@ -153,7 +153,7 @@ Done
 
 注：消息回调机制会自动将UserMessageT中的client提取出来，并且将对应消息体解包，传入回调函数，因此OnDBHeroLogin可以获取到Player的引用，而UserMessageT中的client初始化是在消息构造时传入的，这中消息编解码中详解。对于其他类型消息处理，比如CycleMessage  LoginService需要自己重写ProcessMsg(CycleMessage*)
 
-##ServiceManager
+## ServiceManager
 ServiceManager是整个NGServer的消息集散中心，负责管理所有Service和Message。它将Service和它的_sid对应起来。事实上Service::Send就是通过ServiceManager::Send来转发消息的。
 
 前面提到，Service对于业务逻辑层来说，可以看作一个线程。而它实际上并不是个线程，ServiceManager中提供一个线程池，由它们来将所有的Service"跑起来"，此时的Service相当于一个特殊的"消息队列"，只不过它提供了处理这些消息的接口，也就是Receive():
@@ -289,9 +289,9 @@ void ServiceManager::Start(int threadNum)
 
 ```
 
-##整个流程
+## 整个流程
 
-###一. 框架消息处理流程
+### 一. 框架消息处理流程
 - ServiceManager::Start(int threadNum) 指定线程池线程数 开始运行所有Service::Receive()
 - Service::Receive()从双缓冲消息队列中取出已有消息，逐个调用Service::ReceiveMsg(Message* msg)处理单条消息
 - Service::ReceiveMsg(Message* msg)通过Message::GetType()得到每条消息类型，并且通过std::dynamic_cast将msg转换成对应类型nmsg，最后调用ProcessMsg(nmsg)完成分发
@@ -320,7 +320,7 @@ bool ProcessMsg(InsideMessage* msg) override;
 并完成了对消息的解码和响应函数的回调，因此对于LoginService和MapService，它们只需调用Regist注册消息响应函数后，ProcessMsg会将消息解码并回调到对应函数。ProcessMsg中的回调机制将逻辑由框架导出到了业务层。
 
 - 
-###二. 服务的消息推送流程
+### 二. 服务的消息推送流程
 
 前面说的是消息的处理流程，下面从消息的产生开始讨论消息的生命周期和传递流程。消息一共有四种：UserMessage(T) InsideMessage(T) CycleMessag  TimerMessage，后两种定时器相关的消息由ServiceManager统一管理，因此这里不作阐述。
 

@@ -10,7 +10,7 @@ tags: c/c++
 
 <!--more-->
 
-###一. 相互引用链
+### 一. 相互引用链
 
 ```
 class C;
@@ -46,7 +46,7 @@ int main()
 
 上面的代码中，B和C均不能正确析构，正确的做法是，在B和C的释放函数，如Close中，将其包含的shared_ptr置空。这样才能解开引用链。
 
-###二. 自引用
+### 二. 自引用
 还有个比较有意思的例子：
 
 ```
@@ -87,7 +87,7 @@ int main()
 
 上面的C类包含了一个function，该function通过std::bind引用了一个std::shared_ptr<C>，所以\_decoder其实包含了一个对shared_ptr<C>的引用。导致C自引用了自身，不能正确析构。需要在C的Close之类的执行关闭函数中，将\_decoder=nullptr，以解开这种自引用。
 
-###三. 类中传递
+### 三. 类中传递
 
 下面的例子中有个更为隐蔽的问题：
 
@@ -188,7 +188,7 @@ int main()
 
 正因为这种特性，有时候在成员函数中纠结半天，也不会注意到这个对象已经"不正常了"，被释放掉了。
 
-###四. shared_ptr 使用总结
+### 四. shared_ptr 使用总结
 
 
 1. 尽量不要环引用或自引用，可通过weak_ptr来避免环引用：owner持有child的shared_ptr child持有owner的weak_ptr
