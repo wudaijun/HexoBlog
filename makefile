@@ -17,6 +17,7 @@ deploy:
 	hexo generate
 	cp -r source/assets public/
 	cp source/CNAME public/
+	cp source/favicon.png public/
 	hexo deploy
 
 server:
