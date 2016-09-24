@@ -25,7 +25,7 @@ server:
 	hexo server -p 4444
 
 theme:
-	git clone https://github.com/wudaijun/Hexo-theme-light_cn themes/light-cn
+	git clone https://github.com/wudaijun/Hexo-theme-indigo themes/indigo
 
 gen:
 	hexo generate

@@ -9,6 +9,7 @@ description:
 author: wudaijun
 language: zh-CN
 timezone:
+email: wdjlost@gmail.com
 
 # URL
 ## If your site is put in a subdirectory, set url as 'http://yoursite.com/child' and root as '/child/'
@@ -63,7 +64,14 @@ pagination_dir: page
 # Extensions
 ## Plugins: http://hexo.io/plugins/
 ## Themes: http://hexo.io/themes/
-theme: light-cn
+## theme: light-cn
+theme: indigo
+
+archive_generator:
+    per_page: 0
+    yearly: false
+    monthly: false
+    daily: false
 
 # Deployment
 ## Docs: http://hexo.io/docs/deployment.html
@@ -71,3 +79,8 @@ deploy:
   type: git
   repo: https://github.com/wudaijun/wudaijun.github.io.git
   branch: master
+
+feed:
+    type: atom
+    path: atom.xml
+    limit: 0
