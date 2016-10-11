@@ -190,7 +190,7 @@ start() ->
 	Upgrade Completed. Now verson: 2.0
 	update
 
-##四. 参考
+## 四. 参考
 
 - http://learnyousomeerlang.com/designing-a-concurrent-application#hot-code-loving
 - http://www.erlang.org/doc/reference_manual/code_loading.html#id86381
