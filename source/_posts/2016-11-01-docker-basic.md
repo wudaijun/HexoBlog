@@ -63,6 +63,8 @@ Docker和其它虚拟机或容器技术相比，一是轻量，开销很小，�
     docker rm CONTAINER
     // 把后台容器调到前端
     docker attach [OPTIONS] CONTAINER
+    // 查询容器的详细信息，也可用于镜像
+    docker inspect [OPTIONS] CONTAINER/IMAGE
     // 在容器内执行指定命令 如:  docker exec -it CONTAINER bash
     docker exec [OPTIONS] CONTAINER COMMAND [ARG...]
     也可使用第三方工具如nsenter来进入容器
@@ -73,10 +75,17 @@ Docker和其它虚拟机或容器技术相比，一是轻量，开销很小，�
 
 通过`docker run`的`--network`选项可配置容器的网络模式，Docker提供了多种网络工作模式：
 
-- none 模式(`--network=none`)：不为Docker容器进行任何网络配置，容器将不能访问任何外部的路由(容器内部仍然有loopback接口)，与外部只能通过文件IO和标准输入输出交互。
-- bridge 模式(`--netwok=bridge`)：默认设置，此模式下，容器有自己的独立的Network Namespace。bridge模式的详细实现可参考[Docker源码分析(七)：Docker Container网络(上)][]，简单来说，Docker在宿主机上虚拟了一个子网络，宿主机上所有容器均在这个子网络中获取IP，这个子网通过网桥挂在宿主机网络上。Docker通过NAT技术确保容器可与宿主机外部网络交互。
-- host 模式(`--network=host`)：与宿主机共用网络栈，IP和端口，容器本身看起来就像是个普通的进程，它暴露的端口可直接通过宿主机访问。相比于bridge模式，host模式有显著的性能优势(因为走的是宿主机的网络栈，而不是docker deamon为容器虚拟的网络栈)。
-- container 模式(`--network=container:<name|id>`)：和host模式类似，新创建的容器将与已经存在的一个容器共享IP，端口和网络栈。两个容器之间可通过localhost进行通信。
+- none 模式(`--network none`)：不为Docker容器进行任何网络配置，容器将不能访问任何外部的路由(容器内部仍然有loopback接口)，与外部只能通过文件IO和标准输入输出交互。
+- bridge 模式(`--netwok bridge`)：默认设置，此模式下，容器有自己的独立的Network Namespace。bridge模式的详细实现可参考[Docker源码分析(七)：Docker Container网络(上)][]，简单来说，Docker在宿主机上虚拟了一个子网络，宿主机上所有容器均在这个子网络中获取IP，这个子网通过网桥挂在宿主机网络上。Docker通过NAT技术确保容器可与宿主机外部网络交互。
+- host 模式(`--network host`)：与宿主机共用网络栈，IP和端口，容器本身看起来就像是个普通的进程，它暴露的端口可直接通过宿主机访问。相比于bridge模式，host模式有显著的性能优势(因为走的是宿主机的网络栈，而不是docker deamon为容器虚拟的网络栈)。
+- container 模式(`--network container:<name|id>`)：和host模式类似，新创建的容器将与已经存在的一个容器共享IP，端口和网络栈。两个容器之间可通过localhost进行通信。
+
+这里再提一下bridge模式，在bridge模式下，一个宿主机上的所有容器都在一个子网中(通常是`172.17.0.1/16`)，同一个宿主机上的容器之间，以及容器与宿主机之间可以直接通过IP交互。而对于宿主机之外的网络：
+
+- 容器访问外部网络时，会在宿主机上分配一个可用端口，通过这个端口做SNAT转换(将容器IP:Port换为宿主机IP:Port)，再向外部网络发出请求。当外部响应到达时，Docker再根据这一层端口映射关系，将响应路由给容器IP:Port
+- 外部网络要访问容器Port0，需要先将Port0与宿主机Port1绑定(外部网络无法直接访问宿主机二级网络)，将宿主机IP:Port1暴露给外部网络，外部网络请求到达宿主机时，会进行DNAT转换(将宿主机IP:Port1换为容器IP:Port0)
+
+归根结底，Docker容器在bridge模式下不具有一个公有IP，即和宿主机的eth0不处于同一个网段。导致的结果是宿主机以外的世界不能直接和容器进行通信。虽然NAT模式经过中间处理实现了这一点，但是NAT模式仍然存在问题与不便，如：容器均需要在宿主机上竞争端口，容器内部服务的访问者需要使用服务发现获知服务的外部端口等。另外NAT模式由于是在三层网络上的实现手段，故肯定会影响网络的传输效率。
 
 其它容器网络配置选项参见`docker run --help`以及[Docker run Reference][]。
 

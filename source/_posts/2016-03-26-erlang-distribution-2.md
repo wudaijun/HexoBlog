@@ -15,7 +15,7 @@ Erlang为分布式提供的基础设施
 2. 异步通信模型，屏蔽底层通讯细节(Erlang进程间/系统进程间/物理机间)，将本地代码扩展为分布式程序非常容易
 3. 透明的通信协议，完善的序列化/反序列化支持
 4. 完善的监控能力：监督(supervisor), 监视(monitor), 链接(link)等
-5. 其它分布式组件：如global,epmd, mnesia等
+5. 其它分布式组件：如global,epmd,mnesia等
 
 <!--more-->
 
@@ -39,11 +39,45 @@ cookie是Erlang节点连接时的简单验证机制，只有具有相同cookie�
 
 ### 4. net_kernel
 
-net_kernel管理节点之间的连接，通过`-sname`或`-name`启动参数或在代码中调用`net_kernel:start/1`可以启动net_kernel进程。net_kernel默认会在引用到其它节点时(如rpc:call/5, spawn/4, link/1等)，自动与该节点建立连接，通过`-dist_auto_connect false`选项可以关闭这种行为，如此只能通过`net_kernel:connect_node/1`手动显式地建立连接。
+net\_kernel管理节点之间的连接，通过`-sname`或`-name`启动参数或在代码中调用`net_kernel:start/1`可以启动net_kernel进程。net_kernel默认会在引用到其它节点时(如rpc:call/5, spawn/4, link/1等)，自动与该节点建立连接，通过`-dist_auto_connect false`选项可以关闭这种行为，如此只能通过`net_kernel:connect_node/1`手动显式地建立连接。
 
 ### 5. epmd
 
-epmd(Erlang Port Mapper Daemon)是Erlang节点所在主机上的守护进程，Erlang节点通过epmd进程来维护集群中节点名字到节点物理地址的映射，epmd会在主机上第一个Erlang分布式节点启动时自动后台启动。
+epmd(Erlang Port Mapper Daemon)是Erlang节点所在主机上的守护进程，它维护本机上所有Erlang节点名到节点地址(Host:Port)的映射。
+
+epmd会在主机上第一个Erlang分布式节点启动时自动后台启动，默认监听4369端口。当分布式节点启动时，VM会监听一个端口(可通过`inet_dist_listen_min`和`inet_dist_listen_max`限制端口范围)用于接收其它节点连接请求，之后节点会将节点名(@前半部分)和监听地址发给epmd进程，当节点和epmd进程断开TCP连接后，epmd会注销该节点地址信息。
+
+当节点A(`node_a@myhost1`)尝试连接节点B(`node_b@myhost2`)时，节点A会先向myhost2上的empd进程(`myhost2:4369`)根据节点B名字(nodeb)查询节点监听地址，之后再连接这个监听地址和B节点通信。
+
+默认配置下，epmd在物理机上的监听端口为4369，这意味着：
+
+1. 因为是周知端口，所以通过查询目标机器上的4369，就可以知道这个机器上节点的情况。
+2. 在同一机器可能会部署不同的Erlang集群，希望不要互相干扰。
+3. 防火墙不允许过4369端口，或者不在开放端口之列表。
+
+我们可以指定epmd监听端口：
+
+	// 单独启动epmd进程
+	empd -daemon -port 5000
+	// epmd随分布式节点启动而自动启动时，也可指定epmd的启动方案
+	erl -name hello -epmd "epmd -port 5001 -daemon" -epmd_port 5001
+	
+可以在虚拟机启动时，通过`-epmd_port`(或`ERL_EPMD_PORT`环境变量)指定要连接的epmd端口：
+
+	// 通过启动选项
+	erl -name hello -epmd_port 5000
+	// 通过环境变量
+	ERL_EPMD_PORT=5000 erl -name hello
+	
+
+需要注意的是，一旦节点采用定制的epmd port，那么节点在连接其它节点的时候，也将使用定制的epmd端口访问epmd。因此，**同一个集群的epmd端口必须是一致的**。
+
+参考：
+
+1. http://erlang.org/doc/man/epmd.html
+2. http://www.cnblogs.com/me-sa/p/erlang-epmd.html
+3. http://erlang.org/doc/apps/erts/erl\_dist\_protocol.html
+
 
 ### 6. global
 
