@@ -31,7 +31,7 @@ Erlang虚拟机使用一个字(64/32位)来表示所有类型的数据，即Eter
 
 atom用立即数表示，依赖于高效的哈希和索引表，Erlang的atom比较像整数一样高效，但是atom表是不回收的，并且默认最大值为1024*1024，超过这个限制Erlang虚拟机将会崩溃，可通过+t参数调整该上限。
 
-#### 3. list
+#### 3. lists
 
 列表以标签01标识，剩余62位指向列表的Cons单元，Cons是[Head|Tail]的组合，在内存中体现为两个相邻的Eterm，Head可以是任何类型的Eterm，Tail是列表类型的Eterm。因此形如`L2 = [Elem|L1]`的操作，实际上构造了一个新的Cons，其中Head是Elem Eterm，Tail是L1 Eterm，然后将L2的Eterm指向了这个新的Cons，因此L2即代表了这个新的列表。对于`[Elem|L2] = L1`，实际上是提出了L1 Eterm指向的Cons，将Head部分赋给Elem，Tail部分赋给L2，注意Tail本身就是个List的Eterm，因此list是单向列表，并且构造和提取操作是很高效的。需要再次注意的是，Erlang所有类型的Eterm本身只占用一个字大小。这也是诸如list,tuple能够容纳任意类型的基础。
 
@@ -53,6 +53,10 @@ Erlang中进程内对对象的重复引用只需占用一份对象内存(只是E
 	7> P1 ! L2.					  % 在跨进程时，对象被展开 执行深度拷贝
 	24
 	[[1,2,3],[1,2,3],[1,2,3]]
+	
+此时L1, L2的内存布局如下：
+
+![](/assets/image/erlang/erlang_lists_sample.png "")
 
 #### 4. tuple
 
