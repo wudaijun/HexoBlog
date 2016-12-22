@@ -183,7 +183,7 @@ Erlang binary用于处理字节块，Erlang其它的数据结构(list,tuple,reco
 
 #### refc bianry
 
-大于64字节的binary将创建在Erlang虚拟机全局堆上，称为refc binary(reference-counted binary)，可被所有Erlang进程共享，这样跨进程传输只需传输引用即可，虚拟机会对binary本身进行引用计数追踪，以便GC。refc binary需要两个部分来描述，位于全局堆的binary数据本身和位于进程堆的binary引用(称作ProcBin)，这两种数据结构定义于global.h中。下图描述refc binary和ProcBin的关系：
+大于64字节的binary将创建在Erlang虚拟机全局堆上，称为refc binary(reference-counted binary)，可被所有Erlang进程共享，这样跨进程传输只需传输引用即可，虚拟机会对binary本身进行引用计数追踪，以便GC。refc binary需要两个部分来描述，位于全局堆的refc binary数据本身和位于进程堆的binary引用(称作proc binary)，这两种数据结构定义于global.h中。下图描述refc binary和proc binary的关系：
 
 ![](/assets/image/erlang_refc_binary.png "")
 
@@ -198,7 +198,7 @@ sub binary是Erlang为了优化binary分割的(如`split_binary/2`)，由于Erla
 
 ProBin的size可能小于refc binary的size，如上图中的size3，这是因为refc binary通常会通过预分配空间的方式进行优化。
 
-要注意的是，sub binary只引用ProcBin(通过orig)，而不直接引用refc binary，因此图中refc binary的refc字段仍然为1。只要sub binary还有效，对应的ProcBin便不会被GC，refc binary的计数也就不为0。
+要注意的是，sub binary只引用proc binary(通过orig)，而不直接引用refc binary，因此图中refc binary的refc字段仍然为1。只要sub binary还有效，对应的proc binary便不会被GC，refc binary的计数也就不为0。
 
 #### bit string
 
@@ -245,7 +245,7 @@ B1和B2本身是sub binary(它们只持有refc binary的一部分)，通过sub b
 
 #### binary降级
 
-Erlang通过追加优化构造出的可追加refc binary通过空间换取了效率，并且这类refc binary只能被一个ProcBin引用(多个ProcBin上的sub binary会造成覆写，注意，前面的B1，B2是sub binary而不是ProBin)。比如在跨进程传输时，原本只需拷贝ProBin，但对可追加的refc binary来说，不能直接拷贝ProBin，这时需对binary降级，即将可追加refc binary降级为普通refc binary：
+Erlang通过追加优化构造出的可追加refc binary通过空间换取了效率，并且这类refc binary只能被一个proc binary引用(多个proc binary上的sub binary会造成覆写，注意，前面的B1，B2是sub binary而不是ProBin)。比如在跨进程传输时，原本只需拷贝ProBin，但对可追加的refc binary来说，不能直接拷贝ProBin，这时需对binary降级，即将可追加refc binary降级为普通refc binary：
 
 	bs_emasculate(Bin0) ->
     Bin1 = <<Bin0/binary, 1, 2, 3>>,
@@ -303,57 +303,16 @@ map是OTP 17引进的数据结构，是一个boxed对象，它支持任意类型
 
 在[OTP17][erlang_otp_17_src]中，map的内存结构为：
 
-{% codeblock lang:c %} 
+	{% codeblock lang:c %} 
 	//位于 $OTP_SRC/erts/emulator/beam/erl_map.h
 	typedef struct map_s {
 	    Eterm thing_word;	// 	boxed对象header
 	    Uint  size;			// 	map 键值对个数
 	    Eterm keys;      	// 	keys的tuple
 	} map_t;
-{% endcodeblock %}
+	{% endcodeblock %}
 
-该结构体之后就是依次存放的Value，因此maps的get操作，需要先遍历keys tuple，找到key所在下标，然后在value中取出该下标偏移对应的值。因此是O(n)复杂度的。参见maps:get源码：
-
-{% codeblock lang:c %} 
-	//位于 $OTP_SRC/erts/emulator/beam/erl_map.c
-	int erts_maps_get(Eterm key, Eterm map, Eterm *value) {
-	    Eterm *ks,*vs;
-	    map_t *mp;
-	    Uint n,i;
-		
-	    mp  = (map_t*)map_val(map);
-	    n   = map_get_size(mp);
-	
-	    if (n == 0)
-		return 0;
-		
-		// 备注：
-		//#define map_get_values(x)      (((Eterm *)(x)) + 3)
-		//求出Values的起始位置，其中3 = sizeof(map_t)/sizeof(Eterm)
-		//#define map_get_keys(x)        (((Eterm *)tuple_val(((map_t *)(x))->keys)) + 1)
-		//求出Keys的起始位置，map_t中的keys指向存放keys的tuple，其中1为tuple的Head，里面包含tuple的大小
-	    ks  = map_get_keys(mp);
-	    vs  = map_get_values(mp);
-		
-		//对立即数的比较优化
-	    if (is_immed(key)) {
-		for( i = 0; i < n; i++) {
-		    if (ks[i] == key) {
-			*value = vs[i];
-			return 1;
-		    }
-		}
-	    }
-		
-	    for( i = 0; i < n; i++) {
-		if (EQ(ks[i], key)) {
-		    *value = vs[i];
-		    return 1;
-		}
-	    }
-	    return 0;
-	}
-{% endcodeblock %}
+该结构体之后就是依次存放的Value，因此maps的get操作，需要先遍历keys tuple，找到key所在下标，然后在value中取出该下标偏移对应的值。因此是O(n)复杂度的。详见maps:get源码(`BEAM_SRC/erl_map.c erts_maps_get`)。
 
 如此的maps，只能作为record的替用，并不是真正的Key->Value映射，因此不能存放大量数据。而在OTP18中，maps加入了针对于big map的hash机制，当maps:size < `MAP_SMALL_MAP_LIMIT`时，使用flatmap结构，也就是上述OTP17中的结构，当maps:size >= `MAP_SMALL_MAP_LIMI`T时，将自动使用hashmap结构来高效存取数据。`MAP_SMALL_MAP_LIMIT`在erl_map.h中默认定义为32。
 
