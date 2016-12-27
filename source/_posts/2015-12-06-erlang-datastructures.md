@@ -217,7 +217,7 @@ ProBin的size可能小于refc binary的size，如上图中的size3，这是因�
 	{Bin4,Bin3}
 	
 	% 通过erts_get_internal_state/1可以获取binary状态
-	% 对应函数源码位于erl_bif_info.c erts_debug_get_internal_state_1
+	% 对应函数源码位于$BEAM_SRC/erl_bif_info.c erts_debug_get_internal_state_1
 	f() ->
 		B0 = <<0>>,
 		erts_debug:set_internal_state(available_internal_state,true), % 打开内部状态获取接口 同一个进程只需执行一次
@@ -239,7 +239,9 @@ ProBin的size可能小于refc binary的size，如上图中的size3，这是因�
 	B2: {refc_binary,7,{binary,256},3}
 	{% endcodeblock %}
 	
-B1和B2本身是sub binary(它们只持有refc binary的一部分)，通过sub binary的flags来判定是否可被追加：
+binary追加实现源码位于`$BEAM_SRC/erl_bits.c erts_bs_append`，B1和B2本身是sub binary，基于同一个ProcBin，可追加的refc binary只能被一个ProcBin引用，这是因为可追加refc binary可能会在追加过程中重新分配空间，此时要更新ProcBin引用，而refc binary无法快速追踪到其所有ProcBin引用(只能遍历)，另外，多个ProcBin上的sub binary可能对refc binary覆写。
+
+只有最后追加得到的sub binary才可执行快速追加(通过sub binary和对应ProBin flags来判定)，否则会拷贝并分配新的可追加refc binary。所有的sub binary都是指向ProcBin或heap binary的，不会指向sub binary本身。
 
 ![](/assets/image/erlang_binary_append.png "")
 
@@ -253,7 +255,7 @@ Erlang通过追加优化构造出的可追加refc binary通过空间换取了效
     io:format("Bin1 info: ~p~n", [erts_debug:get_internal_state({binary_info, Bin1})]),
     NewP ! Bin1,
     io:format("Bin1 info: ~p~n", [erts_debug:get_internal_state({binary_info, Bin1})]),
-    Bin2 = <<Bin1/binary, 4, 5, 6>>,
+    Bin2 = <<Bin1/binary, 4, 5, 6>>, % Bin1被收缩 这一步会执行refc binary拷贝
     io:format("Bin2 info: ~p~n", [erts_debug:get_internal_state({binary_info, Bin2})]),
     Bin2.
     
@@ -264,9 +266,9 @@ Erlang通过追加优化构造出的可追加refc binary通过空间换取了效
 	Bin2 info: {refc_binary,7,{binary,256},3}
 	<<0,1,2,3,4,5,6>>
 
-降级操作不会改变原有可追加refc binary的属性，而是重新创建一个普通的refc binary。
+降级操作会重新创建一个普通的refc binary(原有可追加refc binary会被GC?)，同时，降级操作会将B1的flags置0，这保证基于B1的sub binary在执行追加时，会重新拷贝分配refc binary。
 
-	// 降级函数(BEAM_SRC/erl_bits.c)
+	// 降级函数($BEAM_SRC/erl_bits.c)
 	void erts_emasculate_writable_binary(ProcBin* pb)
 	{
 	    Binary* binp;
@@ -286,7 +288,13 @@ Erlang通过追加优化构造出的可追加refc binary通过空间换取了效
 	    }
 	}
 
-另外，全局堆GC也可能会对可追加refc binary的预留空间进行收缩(shrink)，可参考`erl_gc.c sweep_off_heap`函数。
+>> Q: ProcBin B1的字段被更新了，那么Erlang上层如何维护变量不可变语义? 
+
+>> A: 变量不可变指的是Erlang虚拟机上层通过底层屏蔽后所能看到的不变语义，而不是变量底层实现，诸如Pid打包，maps hash扩展等，通过底层差异化处理后，对上层体现的语义和接口都没变，因此我们将其理解为"变量不可变")。
+
+另外，全局堆GC也可能会对可追加refc binary的预留空间进行收缩(shrink)，可参考`$BEAM_SRC/erl_gc.c sweep_off_heap`函数。
+
+以上都是理论的实现，实际上Erlang虚拟机对二进制还做了一些基于上下文的优化，通过`bin_opt_info`编译选项可以打印出这些优化。关于binary优化的更多细节，参考[Constructing and Matching Binaries][]。
 
 ## 二. 复合类型
 
@@ -312,7 +320,7 @@ map是OTP 17引进的数据结构，是一个boxed对象，它支持任意类型
 	} map_t;
 	{% endcodeblock %}
 
-该结构体之后就是依次存放的Value，因此maps的get操作，需要先遍历keys tuple，找到key所在下标，然后在value中取出该下标偏移对应的值。因此是O(n)复杂度的。详见maps:get源码(`BEAM_SRC/erl_map.c erts_maps_get`)。
+该结构体之后就是依次存放的Value，因此maps的get操作，需要先遍历keys tuple，找到key所在下标，然后在value中取出该下标偏移对应的值。因此是O(n)复杂度的。详见maps:get源码(`$BEAM_SRC/erl_map.c erts_maps_get`)。
 
 如此的maps，只能作为record的替用，并不是真正的Key->Value映射，因此不能存放大量数据。而在OTP18中，maps加入了针对于big map的hash机制，当maps:size < `MAP_SMALL_MAP_LIMIT`时，使用flatmap结构，也就是上述OTP17中的结构，当maps:size >= `MAP_SMALL_MAP_LIMI`T时，将自动使用hashmap结构来高效存取数据。`MAP_SMALL_MAP_LIMIT`在erl_map.h中默认定义为32。
 
@@ -445,3 +453,4 @@ elements是一个tuple tree，即用tuple包含tuple的方式组成的树，叶�
 [map_test]: https://github.com/wudaijun/Code/blob/master/erlang/map_test.erl
 [erlang_otp_18_src]: https://github.com/erlang/otp/tree/maint-18
 [erlang_otp_17_src]: https://github.com/erlang/otp/tree/maint-17
+[Constructing and Matching Binaries]: http://erlang.org/doc/efficiency_guide/binaryhandling.html
