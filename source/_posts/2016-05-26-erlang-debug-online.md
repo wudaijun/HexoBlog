@@ -6,18 +6,46 @@ categories: erlang
 
 ---
 
-## 接入远程节点的几种方法
+## 一. 接入远程节点
 
-1. JCL任务切换或remsh启动参数：
+### 1. JCL
 
-		erl -setcookie abc -name node_2@127.0.0.1 -remsh node_1@127.0.0.1
-2. 通过[erl_call][]实现shell脚本与Erlang节点的简单交互:
+	erl -sname n2 -setcookie 123
+	(n2@T4F-MBP-11)1>		//^G
+	User switch command
+	 --> r 'n1@T4F-MBP-11'
+	 --> c
+	Eshell V8.1  (abort with ^G)
+	(n1@T4F-MBP-11)1>
+
+
+### 2. remsh
+
+	erl -setcookie abc -name node_2@127.0.0.1 -remsh node_1@127.0.0.1
+	
+和第一种JCL方式是同一个原理，这也是rebar2 remote_console的实现方式。
+
+### 3. [erl_call][]
 	
 		erl_call -s -a 'erlang memory ' -name node_1@127.0.0.1 -c abc
 
-<!--more-->
+### 4. [run_erl][]
+	
+		run_erl -daemon tmp/ log/ "exec erl -eval 't:start_link().'"
+	
+`run_erl`是随OTP发布的命令，它通过管道来与Erlang节点交互，仅类Unix系统下可用。上面的命令启动Erlang节点，将tmp/目录设为节点管道目录，之后`run_erl`会在tmp下创建`erlang.pipe.1.r erlang.pipe.1.w`两个管道文件，外部系统可通过该管道文件向节点写入/读取数据。可用OTP提供的`to_erl`命令通过管道连接到节点:
 
-3. 通过ssh服务连接Erlang节点：
+		to_erl tmp/
+		Attaching to tmp/erlang.pipe.1 (^D to exit)
+		1> 
+
+需要注意的当前你是直接通过Unix管道和节点交互的，并不存在中间代理节点(和remsh方式不同)，因此在这种情况下使用JCL `^G+q`会终止目标节点。如果要退出attach模式而不影响目标节点，使用`^D`。
+
+`run_erl`另一个作用是输出重定向，上例中将所有输出(包括虚拟机和nif输出)重定向到log/erlang.log.*，这对多日志渠道(lager,io:format,c,lua等)的混合调试是有所帮助的。
+
+rebar2便通过`run_erl`实现节点启动，并使用`to_erl`实现`attach`命令。
+
+### 5. ssh
 
 		---------- Server:  -----------
 		$ mkdir /tmp/ssh
@@ -37,7 +65,7 @@ categories: erlang
 		1>
 
 
-## etop
+## 二. etop
 
 etop是Erlang提供的类似于top命令，它的输出格式和功能都与top类似，提供了必要的节点信息和进程信息。常用用法：
 
@@ -73,13 +101,13 @@ etop是Erlang提供的类似于top命令，它的输出格式和功能都与top�
 
 官方文档：http://erlang.org/doc/apps/observer/etop_ug.html
 
-## erlang自带模块
+## 三. erlang API
 
-### 内存
+### 1. 内存
 
 通过`erlang:memory()`可以查看整个Erlang虚拟机的内存使用情况。
 
-### CPU
+### 2. CPU
 
 Erlang的CPU使用情况是比较难衡量的，由于Erlang虚拟机内部复杂的调度机制，通过`top/htop`得到的系统进程级的CPU占用率参考性是有限的，即使一个空闲的Erlang虚拟机，调度线程的忙等也会占用一定的CPU。
 
@@ -112,7 +140,7 @@ ok
 }]
 ```
 
-### 进程
+### 3. 进程
 
 通过`length(processes())`/`length(ports())`统计虚拟机当前进程和端口数量。
 
@@ -146,19 +174,38 @@ ok
 - sys:terminate(Pid, Reason):		向指定进程发消息，终止该进程
 
 
-## recon
+## 四. recon
 
 [recon][]是[learn you some erlang][]的作者写的一个非常强大好用的库，将erlang散布在各个模块的调试函数整合起来，以更易用和可读的方式提供给用户，包含了信息统计，健康状态分析，动态追踪调试等一整套解决方案。并且本身只是一系列的API，放入rebar deps即可attach上节点使用，强烈推荐。
 
+下面是我常用的几个函数:
+
+	% 找出当前节点Attr属性(如message_queue_len)最大的N个进程
+	recon:proc_count(Attr, N).
+	% 对节点进行GC，并返回进程GC前后持有的binary差异最大的N个进程
+	recon:bin_leak(N).
+	% process_info的安全增强版本
+	recon:info/1-2-3-4
+	% 返回M毫秒内的调度器占用
+	recon:scheduler_usage(M)
+	% 强大的动态追踪函数，可用于动态挂载钩子。
+	% 1. 可挂载模块/函数调用(甚至可对参数匹配/过滤)
+	% 2. 可对调用进程筛选(指定Pid，限制新建进程等)
+	% 3. 可限制打印的追踪数量/速率
+	% 4. 其它功能，如输出重定向，追踪调用结果等
+	recon_trace:calls/2-3
+	
+
 详细用法参见：http://ferd.github.io/recon/
 
-## 更多资料
+## 五. 更多资料
 
 - Erlang实践红宝书：[Erlang In Anger][]
 
 
 
 [erl_call]: http://erlang.org/doc/man/erl_call.html
+[run_erl]: http://erlang.org/doc/man/run_erl.html
 [recon]: https://github.com/ferd/recon
 [Erlang In Anger]: http://pan.baidu.com/s/1gfCZBKf
 [learn you some erlang]: http://learnyousomeerlang.com/
