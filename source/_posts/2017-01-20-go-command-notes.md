@@ -91,7 +91,7 @@ go run编译(通过go build)并运行命令源码文件(main package)，查看�
 - 所有的测试用例函数必须是Test开头
 - 测试用例会按照源代码中写的顺序依次执行
 - 测试函数TestXxx()的参数是testing.T，我们可以使用该类型来记录错误或者是测试状态
-- 测试格式：`func TestXxx (t *testing.T)`,Xxx部分可以为任意的字母数字的组合，但是- - 首字母不能是小写字母[a-z]，例如Testintdiv是错误的函数名
+- 测试格式：`func TestXxx (t *testing.T)`,Xxx部分可以为任意的字母数字的组合，但是- - 首字母不能是小写字母[a-z]，例如Testingdiv是错误的函数名
 - 函数中通过调用testing.T的Error, Errorf, FailNow, Fatal, FatalIf方法，说明测试不通过，调用Log方法用来记录测试的信息
 
 测试分为包内测试和包外测试，即测试源码文件可于被测试源码文件位于同一个包(目录)，或者测试源码文件声明的包名可以是被测试包名+"_test"后缀。
