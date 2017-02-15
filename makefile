@@ -18,6 +18,7 @@ deploy:
 	cp -r source/assets public/
 	cp source/CNAME public/
 	cp source/favicon.png public/
+	cp source/favicon.ico public/
 	hexo deploy
 
 server:

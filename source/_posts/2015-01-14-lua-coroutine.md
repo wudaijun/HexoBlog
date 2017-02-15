@@ -1,15 +1,25 @@
 ---
 layout: post
-title: lua协程
+title: lua 协程和状态
 categories:
 - lua
 tags:
 - lua
 ---
 
-协程是一种用户级的非抢占式线程。用户级是指它的切换和调度由用户控制，非抢占指一个协程只有在其挂起(yield)或者协程结束才会返回。协程和C线程一样，有自己的堆栈，自己的局部变量，自己的指令指针，并且和其它协程共享全局变量等信息。用户可以实现自己调度协程，这主要得益于yield函数可以自动保存协程当前上下文，这样当挂起的协程被唤醒(resume)时，会从yield处继续向下执行，看起来就像是一个"可以返回多次的函数"。协程还有一个强大的功能就是可通过resume/yield来交换数据，这样使得它可以用于异步回调：当执行异步代码时，切换协程，执行完成后，再切换回来(附带异步执行结果)。由于切换都是用户控制的，在同一时刻只有一个协同程序在运行(这也是和传统线程最大的区别之一)，因此无需考虑同步和加锁的问题。
+协程(协同式多线程)是一种用户级的非抢占式线程。用户级是指它的切换和调度由用户控制，非抢占指一个协程只有在其挂起(yield)或者协程结束才会返回。协程和C线程一样，有自己的堆栈，自己的局部变量，自己的指令指针，并且和其它协程共享全局变量等信息。用户可以实现自己调度协程，这主要得益于yield函数可以自动保存协程当前上下文，这样当挂起的协程被唤醒(resume)时，会从yield处继续向下执行，看起来就像是一个"可以返回多次的函数"。协程还有一个强大的功能就是可通过resume/yield来交换数据，这样使得它可以用于异步回调：当执行异步代码时，切换协程，执行完成后，再切换回来(附带异步执行结果)。由于切换都是用户控制的，在同一时刻只有一个协同程序在运行(这也是和传统线程最大的区别之一)，因此无需考虑同步和加锁的问题。
 
 <!--more-->
+
+Lua协程的相关函数封装在coroutine中，对应的 C API为`lua_newthread`，`lua_resume`等。Lua文档中的thread和coroutine是一个概念，但与操作系统的线程是两个东西。
+
+C API通过`lua_State`维护一个协程的状态(以及Lua虚拟机状态的引用)，协程的状态主要指协程上下文(如交互栈)，Lua虚拟机状态是全局的，可被多个协程共享。以下描述摘自Lua5.3官方文档：
+
+>> An opaque structure that points to a thread and indirectly (through the thread) to the whole state of a Lua interpreter. The Lua library is fully reentrant: it has no global variables. All information about a state is accessible through this structure.
+
+>> A pointer to this structure must be passed as the first argument to every function in the library, except to lua_newstate, which creates a Lua state from scratch.
+
+当调用`lua_newstate`时，实际上分为两步，1. 创建并初始化一个Lua虚拟机；2.创建一个主线程运行于虚拟机中。调用`lua_newthread`时，将在已有Lua虚拟机上，创建另一个协程执行环境，该协程与已有协程共享虚拟机状态。这两个函数返回不同的lua\_State，但却共享同一个虚拟机状态，因此将lua\_State理解为协程执行上下文可能更合适，lua\_State本身也是一个类型为thread的GCObject，无需手动释放(Lua也没有提供对应close或destroy接口)。
 
 ### 两个例子
 
