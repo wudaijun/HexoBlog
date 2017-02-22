@@ -3,6 +3,7 @@ title: Erlang Unicode编码
 layout: post
 categories: erlang
 tags: erlang
+
 ---
 
 ## Unicode基础
@@ -88,7 +89,7 @@ tags: erlang
 - charlist: UTF8编码的binary，或包含有效unicode codepoint的lists，或它们的嵌套，如`[<<"hello">>, "中国"]`
 
 
-`~s`只能打印iolist，binary，或atom，因此不能直接打印中文lists(无法解码超过255的codepoint)或UTF8 binary(会按字节解释，出现乱码)，
+`~s`只能打印iolist，binary，或atom，因此不能直接打印中文lists(无法解码超过255的codepoint)或UTF8 binary(会按字节解释，出现乱码)。
 
 `~ts`则可打印charlist和unicode binary。
 
