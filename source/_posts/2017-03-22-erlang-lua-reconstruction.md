@@ -35,9 +35,9 @@ N|1|?|?
 
 1. `N 1 N N`：每个service对应一个erlang process，多个erlang process将代理同一个lua state，这就需要lua state可以"被并发"，也就是同一个lua state只能绑定一个原生线程池上执行，这一点是可以实现的。这种方案在erlang层会获得更好的并发性能，并且cluster层语义不变。
 2. `N 1 1 N`：一个erlang process作为container的概念代理一个lua state，容纳N个service，并且将service和erlang process的映射关系写入cluster，cluster层对外提供的语义不变，但service的actor属性被弱化，service的一致性状态是个问题。
-3. `N 1 1 1`：与上种方案类似，只不过将service到container的映射通过算法算出来，而不写入cluster，container本身被编号(如按照{serverid, servicetype}固定分配M个)，某个service将始终分配在指定container上。这种方案减少了cluster负担，并且减少了service不一致性的BUG。但由于container有状态，在每次系统启动后，service和container的映射关系就确定了，因此整个集群的可伸缩性降低了。
+3. `N 1 1 1`：与上种方案类似，只不过将service到container的映射通过算法算出来，而不写入cluster，container本身被编号（编号时，可考虑将serverid编入，这样开新服有一定的扩展性，PS: [一致性哈希][5]方案不适用于游戏这类强状态逻辑），某个service将始终分配在指定container上。这种方案减少了cluster负担，并且减少了service不一致性的BUG。但由于container有状态，在每次系统启动后，service和container的映射关系就确定了，因此整个集群的可伸缩性降低了。
 
-经过几番讨论，我们最终选择了第三个方案，以降低集群的可伸缩性为代价，提高系统的稳定性。由于cluster条目减少了，整个mnesia的性能和一致性也得到了提升。本次重构在某些方面与我上一个项目[针对cluster的优化][4]有点相似，一个对系统服务进行横向切割，另一个则纵向切割，前者的初衷是为了更好地交互效率，后者则是处于对lua state资源的复用，两者都降低了系统的可伸缩性，得到了"一个更大粒度"的service。
+经过几番讨论，我们最终选择了第三个方案，虽然个人认为这类固定分配的方案，与分布式的理念是相悖的，但目前稳定性和一致性才是首要目标。由于采用计算而不是通过mnesia保存映射关系，mnesia的性能和系统一致性得到了提升。本次重构在某些方面与我上一个项目[针对cluster的优化][4]有点相似，一个对系统服务进行横向切割，另一个则纵向切割，前者的初衷是为了更好地交互效率，后者则是处于对lua state资源的复用，两者都降低了系统的可伸缩性，得到了"一个更大粒度"的service。
 
 整个重构过程中，有几点感触：
 
@@ -49,3 +49,4 @@ erlang和lua结合本身不是一种好的解决方案，或者说，erlang接�
 [2]: http://wudaijun.com/2015/09/erlang-server-design2-erlang-lua-battle/
 [3]: http://blog.codingnow.com/2012/07/dev_note_24.html
 [4]: http://wudaijun.com/2016/01/erlang-server-design5-server-node/
+[5]: http://yikun.github.io/2016/06/09/%E4%B8%80%E8%87%B4%E6%80%A7%E5%93%88%E5%B8%8C%E7%AE%97%E6%B3%95%E7%9A%84%E7%90%86%E8%A7%A3%E4%B8%8E%E5%AE%9E%E8%B7%B5/
