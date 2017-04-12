@@ -127,13 +127,13 @@ Erlang建议的NIF执行时间不要超过1ms，针对于执行时间长的NIF�
 2. 让NIF参与调度。在NIF中恰当时机通过`enif_consume_timeslice`汇报消耗的时间片，让虚拟机确定是否放弃控制权并通过返回值通知NIF(做上下文保存等)
 3. 使用脏调度器，让NIF在非调度线程中执行
 
-Erlang默认并未启用脏调度器，通过`--enable-dirty-schedulers`选项并重新编译可打开脏调度器，目前脏调度器只能被NIF使用。
+Erlang默认并未启用脏调度器，通过`--enable-dirty-schedulers`选项重新编译虚拟机可打开脏调度器，目前脏调度器只能被NIF使用。
 
 关于脏调度器，NIF测试与调优，参考：
 
 1. [siyao blog][]
 2. [nifwait][]
-3. [bitwise][](里面的PDF质量很高)
+3. [bitwise][]([其中的PDF][bitwise pdf]质量很高)
 
 
 Port Driver和NIF与虚拟机调度密切相关，想要在实践中用好它们，还是要加深对Erlang虚拟机调度的理解，如公平调度，进程规约，调度器协同等。再来理解异步线程池，脏调度器的存在的意义以及适用场景。另外，Port Driver和NIF还有一种用法是自己创建新的线程或线程池(Driver和NIF也提供了线程操作API)，我们项目组也这么用过，这基本是费力不讨好的一种方案，还极易出错。
@@ -142,6 +142,7 @@ Port Driver和NIF与虚拟机调度密切相关，想要在实践中用好它们
 [siyao blog]: http://www.cnblogs.com/zhengsyao/p/dirty_scheduler_otp_17rc1.html
 [nifwait]: https://github.com/slfritchie/nifwait/tree/md5
 [bitwise]: https://github.com/vinoski/bitwise/
+[bitwise pdf]: https://github.com/vinoski/bitwise/blob/master/vinoski-opt-native-code.pdf
 [ErlDrvEntry]: http://erlang.org/doc/man/driver_entry.html
 [skynet_service]: http://wudaijun.com/2015/01/skynet-c-module/
 [C Nodes]: http://erlang.org/doc/tutorial/cnode.html
