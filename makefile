@@ -26,8 +26,14 @@ server:
 	cp -r source/assets public/
 	hexo server -p 4444
 
+# 参考：https://github.com/yscoder/hexo-theme-indigo/wiki/%E5%AE%89%E8%A3%85
 theme:
 	git clone https://github.com/wudaijun/Hexo-theme-indigo themes/indigo
+	git checkout -b card origin/card
+	npm install hexo-renderer-less --save
+	npm install hexo-generator-feed --save
+	npm install hexo-generator-json-content --save
+	hexo new page tags
 
 gen:
 	hexo generate
