@@ -22,6 +22,7 @@ deploy:
 	hexo deploy
 
 server:
+	export NODE_PATH=/usr/local/lib/node_modules
 	hexo generate
 	cp -r source/assets public/
 	hexo server -p 4444
