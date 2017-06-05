@@ -109,7 +109,7 @@ Go中没有private public等关键字，要使符号对其它包可见，则需�
 
 GO中的接口是非侵入式的，接口与类分离，类只需要关心它应该有那些功能(函数)，而无需操心其应该满足哪些接口(契约)，**一个类只要实现了某个接口的所有函数，那么它就实现了这个接口**：
 
-```
+```go
 type IReader interface{
     Read(buf []byte) (n int, err error)
 }
@@ -160,48 +160,49 @@ Go的非侵入式接口的意义：
 
 由于接口本身是一种类型，因此它可被赋值。接口赋值分为两种：将对象赋值给接口和将接口赋值给接口：
 
-```go
-// 1. 将对象赋值给接口
-// 赋值条件：对象需实现该接口
-f := File{}
-// ok
-var I1 IDevice = f
-// ok. Go会根据 func (f File) Name() 自动生成 func (f *file) Name()方法
-var I2 IDevice = &f
-// error. File类实现的IFile接口中，有函数的接收者为File*
-// func (f *File) Read(buf []byte) 不能转化为 func (f File) Read(buf []byte)
-// 因为前者可能在函数中改变f，后者不能，可能造成语义上的不一致
-var I3 IFile = f
-// ok
-var I4 IFile = &f
-// 赋值完成之后 可通过接口直接调用对象方法
-I1.Name()
-
-
-// 2. 将接口赋值给接口
-// 赋值条件：左值接口需是右值接口的子集
-var I5 IReader = I1 // error
-var I6 IFile   = I3 // ok
-var I7 IReader = I3 // ok
-```### 3. 接口查询
+{% codeblock lang:go %}
+	// 1. 将对象赋值给接口
+	// 赋值条件：对象需实现该接口
+	f := File{}
+	// ok
+	var I1 IDevice = f
+	// ok. Go会根据 func (f File) Name() 自动生成 func (f *file) Name()方法
+	var I2 IDevice = &f
+	// error. File类实现的IFile接口中，有函数的接收者为File*
+	// func (f *File) Read(buf []byte) 不能转化为 func (f File) Read(buf []byte)
+	// 因为前者可能在函数中改变f，后者不能，可能造成语义上的不一致
+	var I3 IFile = f
+	// ok
+	var I4 IFile = &f
+	// 赋值完成之后 可通过接口直接调用对象方法
+	I1.Name()
+	
+	
+	// 2. 将接口赋值给接口
+	// 赋值条件：左值接口需是右值接口的子集
+	var I5 IReader = I1 // error
+	var I6 IFile   = I3 // ok
+	var I7 IReader = I3 // ok
+{% endcodeblock %}### 3. 接口查询
 既然我们可以将对象或者接口赋值给接口，那么也应该有方法能让我们从一个接口查询出其指向对象的类型信息和接口信息：
-```gof := File{}
-// 接口查询
-var I1 IDevice = f
-// 判断接口I1指向的对象是否实现了IFile接口
-I2, ok := I1.(IFile) // ok = false File类型没有实现IFile接口 File*类型实现了
-    
-// 类型查询
-// 方法一 type assertions
-f2, ok := I1.(File) // ok = true
-// 方法二 type switch
-// X.(type)方法只能用在switch语句中
-switch(I1.(type)){
-    case int:       // 如果I1指向的对象为int
-    case File:      // 如果I1指向的对象为File
-    ...
-}
-```
+
+	f := File{}
+	// 接口查询
+	var I1 IDevice = f
+	// 判断接口I1指向的对象是否实现了IFile接口
+	I2, ok := I1.(IFile) // ok = false File类型没有实现IFile接口 File*类型实现了
+	    
+	// 类型查询
+	// 方法一 type assertions
+	f2, ok := I1.(File) // ok = true
+	// 方法二 type switch
+	// X.(type)方法只能用在switch语句中
+	switch(I1.(type)){
+	    case int:       // 如果I1指向的对象为int
+	    case File:      // 如果I1指向的对象为File
+	    ...
+	}
+
 
 ### 4. 接口组合
 
@@ -250,11 +251,10 @@ IReader接口变量只提供了访问Read方法的能力，但其接口变量仍
 
 现在我们尝试通过反射修改接口变量的值：
 
-```go
-var x float64 = 3.4v := reflect.ValueOf(x)
-v.Set(4.1)
-// 输出: ./test.go:35: cannot use 4.1 (type float64) as type reflect.Value in argument to v.Set
-```
+
+	var x float64 = 3.4	v := reflect.ValueOf(x)
+	v.Set(4.1) // error: cannot use 4.1 (type float64) as type reflect.Value in argument to v.Set
+
 
 由于在`refect.ValueOf(x)`中操作的是x的拷贝，因此实际上v.Set即使能操作成功，也不能如我们预期一般修改x的值。因此reflect提供`Value.CanSet()`来辨别这类不能成功修改的值：
 
