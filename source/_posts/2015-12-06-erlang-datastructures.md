@@ -57,19 +57,21 @@ atom用立即数表示，在Eterm中保存的是atom在全局atom表中的索引
 
 在R9B之后，随着进程数量增加和其它因素，Pid只在32位中表示本地Pid(A=0)，将32位中除了4位Tag之外的28位，都可用于进程Pid表示，出于Pid表示的历史原因，仍然保留三段式的显示，本地Pid表示变成了`<0, Pid低15位, Pid高13位>`。对于外部Pid，采用boxed复合对象表示，在将本地Pid发往其它node时，Erlang会自动将为Pid加上本地节点信息，并打包为一个boxed对象，占用6个字。另外，Erlang需要维护Pid表，每个条目占8个字节，当进程数量过大时，Pid表将占用大量内存，Erlang默认可以使用18位有效位来表示Pid(262144)，可通过+P参数调节，最大值为27位(2^27-1)，此时Pid表占用内存为2G。
 
-	Eshell V8.1  (abort with ^G)
-	(n1@T4F-MBP-11)1> node().
-	'n1@T4F-MBP-11'
-	% 节点名的二进制表示
-	(n1@T4F-MBP-11)2> term_to_binary(node()).
-	<<131,100,0,13,110,49,64,84,52,70,45,77,66,80,45,49,49>>
-	(n1@T4F-MBP-11)3> self().
-	<0.63.0>
-	% term_to_binary会将A对应的节点名编码进去
-	(n1@T4F-MBP-11)4> term_to_binary(self()).
-	<<131,103,100,0,13,110,49,64,84,52,70,45,77,66,80,45,49,
-	  49,0,0,0,63,0,0,0,0,2>>
-	(n1@T4F-MBP-11)5>
+```erlang
+Eshell V8.1  (abort with ^G)
+(n1@T4F-MBP-11)1> node().
+'n1@T4F-MBP-11'
+% 节点名的二进制表示
+(n1@T4F-MBP-11)2> term_to_binary(node()).
+<<131,100,0,13,110,49,64,84,52,70,45,77,66,80,45,49,49>>
+(n1@T4F-MBP-11)3> self().
+<0.63.0>
+% term_to_binary会将A对应的节点名编码进去
+(n1@T4F-MBP-11)4> term_to_binary(self()).
+<<131,103,100,0,13,110,49,64,84,52,70,45,77,66,80,45,49,
+  49,0,0,0,63,0,0,0,0,2>>
+(n1@T4F-MBP-11)5>
+```
 
 
 ### 3. lists
@@ -78,22 +80,24 @@ atom用立即数表示，在Eterm中保存的是atom在全局atom表中的索引
 
 Erlang中进程内对对象的重复引用只需占用一份对象内存(只是Eterm本身一个字的拷贝)，但是在对象跨进程时，对象会被展开，执行速深度拷贝：
 
-	Eshell V7.0.2  (abort with ^G)
-	1> L1 = [1,2,3].
-	[1,2,3]
-	2> erts_debug:size(L1).		  
-	6
-	3> L2 = [L1,L1,L1].
-	[[1,2,3],[1,2,3],[1,2,3]]
-	4> erts_debug:size(L2).		  % 获得L2对象树的大小 3*2+6
-	12
-	5> erts_debug:flat_size(L2). 	% 获得对象平坦展开后的大小 3*(2+6)
-	24
-	6> P1 = spawn(fun() -> receive L -> io:format("~p~n",[erts_debug:size(L)]) end end).
-	<0.45.0>
-	7> P1 ! L2.					  % 在跨进程时，对象被展开 执行深度拷贝
-	24
-	[[1,2,3],[1,2,3],[1,2,3]]
+```erlang
+Eshell V7.0.2  (abort with ^G)
+1> L1 = [1,2,3].
+[1,2,3]
+2> erts_debug:size(L1).		  
+6
+3> L2 = [L1,L1,L1].
+[[1,2,3],[1,2,3],[1,2,3]]
+4> erts_debug:size(L2).		  % 获得L2对象树的大小 3*2+6
+12
+5> erts_debug:flat_size(L2). 	% 获得对象平坦展开后的大小 3*(2+6)
+24
+6> P1 = spawn(fun() -> receive L -> io:format("~p~n",[erts_debug:size(L)]) end end).
+<0.45.0>
+7> P1 ! L2.					  % 在跨进程时，对象被展开 执行深度拷贝
+24
+[[1,2,3],[1,2,3],[1,2,3]]
+```
 	
 此时L1, L2的内存布局如下：
 
@@ -108,60 +112,59 @@ tuple属于boxed对象的一种，每个boxed对象都有一个对象头(header)
 tuple实际上就是一个有头部的数组，其包含的Eterm在内存中紧凑排列，tuple的操作效率和数组是一致的。
 
 list和tuple是erlang中用得最多的数据结构，也是其它一些数据结构的基础，如record，map，摘下几个关于list，tuple操作的常用函数，便于加深对结构的理解：
-
-	{% codeblock lang:c %} 
-	// 位于 $OTP_SRC/erts/emulator/beam/bif.c
-	BIF_RETTYPE tuple_to_list_1(BIF_ALIST_1)
-	{
-	    Uint n;
-	    Eterm *tupleptr;
-	    Eterm list = NIL;
-	    Eterm* hp;
+```c
+// 位于 $OTP_SRC/erts/emulator/beam/bif.c
+BIF_RETTYPE tuple_to_list_1(BIF_ALIST_1)
+{
+    Uint n;
+    Eterm *tupleptr;
+    Eterm list = NIL;
+    Eterm* hp;
 	
-	    if (is_not_tuple(BIF_ARG_1))  {
-		BIF_ERROR(BIF_P, BADARG);
-	    }
+    if (is_not_tuple(BIF_ARG_1))  {
+	BIF_ERROR(BIF_P, BADARG);
+    }
 	
-		// 得到tuple Eterm所指向的tuple对象头
-	    tupleptr = tuple_val(BIF_ARG_1);
-	    // 得到对象头中的tuple size		    
-	    n = arityval(*tupleptr);
-	    hp = HAlloc(BIF_P, 2 * n);
-	    tupleptr++;
+	// 得到tuple Eterm所指向的tuple对象头
+    tupleptr = tuple_val(BIF_ARG_1);
+    // 得到对象头中的tuple size		    
+    n = arityval(*tupleptr);
+    hp = HAlloc(BIF_P, 2 * n);
+    tupleptr++;
 	
-		// 倒序遍历 因为list CONS的构造是倒序的
-	    while(n--) {
-	    // 相当于hp[0]=tupleptr[n]; hp[1] = list; list = make_list(hp);
-	    // 最后返回的是指向hp的list Eterm
-		list = CONS(hp, tupleptr[n], list);
-		hp += 2;
-	    }
-	    BIF_RET(list);
-	}
+	 // 倒序遍历 因为list CONS的构造是倒序的
+    while(n--) {
+    // 相当于hp[0]=tupleptr[n]; hp[1] = list; list = make_list(hp);
+    // 最后返回的是指向hp的list Eterm
+	list = CONS(hp, tupleptr[n], list);
+	hp += 2;
+    }
+    BIF_RET(list);
+}
 	
-	BIF_RETTYPE list_to_tuple_1(BIF_ALIST_1)
-	{
-	    Eterm list = BIF_ARG_1;
-	    Eterm* cons;
-	    Eterm res;
-	    Eterm* hp;
-	    int len;
+BIF_RETTYPE list_to_tuple_1(BIF_ALIST_1)
+{
+    Eterm list = BIF_ARG_1;
+    Eterm* cons;
+    Eterm res;
+    Eterm* hp;
+    int len;
 	
-	    if ((len = erts_list_length(list)) < 0 || len > 		ERTS_MAX_TUPLE_SIZE) {
-		BIF_ERROR(BIF_P, BADARG);
-	    }
-		// 元素个数 + 对象头
-	    hp = HAlloc(BIF_P, len+1);
-	    res = make_tuple(hp);
-	    *hp++ = make_arityval(len);
-	    while(is_list(list)) {
-		cons = list_val(list);
-		*hp++ = CAR(cons);
-		list = CDR(cons);
-	    }
-	    BIF_RET(res);
-	}
-	{% endcodeblock %}
+    if ((len = erts_list_length(list)) < 0 || len > 		ERTS_MAX_TUPLE_SIZE) {
+	BIF_ERROR(BIF_P, BADARG);
+    }
+	// 元素个数 + 对象头
+    hp = HAlloc(BIF_P, len+1);
+    res = make_tuple(hp);
+    *hp++ = make_arityval(len);
+    while(is_list(list)) {
+	cons = list_val(list);
+	*hp++ = CAR(cons);
+	list = CDR(cons);
+    }
+    BIF_RET(res);
+}
+```
 	
 可以看到，list，tuple中添加元素，实际上都是在拷贝Eterm本身，Erlang虚拟机会追踪这些引用，并负责垃圾回收。
 
@@ -175,13 +178,15 @@ Erlang binary用于处理字节块，Erlang其它的数据结构(list,tuple,reco
 
 小于64字节(定义于erl_binary.h `ERL_ONHEAP_BIN_LIMIT`宏)的小binary直接创建在进程堆上，称为heap binary，heap binary是一个boxed对象：
 
-	typedef struct erl_heap_bin {
-	    Eterm thing_word;		/* Subtag HEAP_BINARY_SUBTAG. */
-	    Uint size;				/* Binary size in bytes. */
-	    Eterm data[1];			/* The data in the binary. */
-	} ErlHeapBin;
+```c
+typedef struct erl_heap_bin {
+    Eterm thing_word;		/* Subtag HEAP_BINARY_SUBTAG. */
+    Uint size;				/* Binary size in bytes. */
+    Eterm data[1];			/* The data in the binary. */
+} ErlHeapBin;
+```
 
-#### refc bianry
+#### refc binary
 
 大于64字节的binary将创建在Erlang虚拟机全局堆上，称为refc binary(reference-counted binary)，可被所有Erlang进程共享，这样跨进程传输只需传输引用即可，虚拟机会对binary本身进行引用计数追踪，以便GC。refc binary需要两个部分来描述，位于全局堆的refc binary数据本身和位于进程堆的binary引用(称作proc binary)，这两种数据结构定义于global.h中。下图描述refc binary和proc binary的关系：
 
@@ -208,36 +213,36 @@ ProBin的size可能小于refc binary的size，如上图中的size3，这是因�
 
 在通过`C = <<A/binary,B/binary>>`追加构造binary时，最自然的做法应当是创建足够空间的C(heap or refc)，再将A和B的数据拷贝进去，但Erlang对binary的优化不止于此，它使用refc binary的预留空间，通过追加的方式提高大binary和频繁追加的效率。
 
-	{% codeblock lang:erlang %}
-	Bin0 = <<0>>,                    %% 创建一个heap binary Bin0
-	Bin1 = <<Bin0/binary,1,2,3>>,    %% 追加目标不是refc binary，创建一个refc binary，预留256字节空间，用Bin0初始化，并追加1,2,3
-	Bin2 = <<Bin1/binary,4,5,6>>,    %% 追加目标为refc binary且有预留空间 直接追加4,5,6
-	Bin3 = <<Bin2/binary,7,8,9>>,    %% 同样，将7,8,9追加refc binary预留空间
-	Bin4 = <<Bin1/binary,17>>,       %% 此时不能直接追加，否则会覆盖Bin2内容，虚拟机会通过某种机制发现这一点，然后将Bin1拷贝到新的refc binary，再执行追加
-	{Bin4,Bin3}
+```erlang
+Bin0 = <<0>>,                    %% 创建一个heap binary Bin0
+Bin1 = <<Bin0/binary,1,2,3>>,    %% 追加目标不是refc binary，创建一个refc binary，预留256字节空间，用Bin0初始化，并追加1,2,3
+Bin2 = <<Bin1/binary,4,5,6>>,    %% 追加目标为refc binary且有预留空间 直接追加4,5,6
+Bin3 = <<Bin2/binary,7,8,9>>,    %% 同样，将7,8,9追加refc binary预留空间
+Bin4 = <<Bin1/binary,17>>,       %% 此时不能直接追加，否则会覆盖Bin2内容，虚拟机会通过某种机制发现这一点，然后将Bin1拷贝到新的refc binary，再执行追加
+{Bin4,Bin3}
 	
-	% 通过erts_get_internal_state/1可以获取binary状态
-	% 对应函数源码位于$BEAM_SRC/erl_bif_info.c erts_debug_get_internal_state_1
-	f() ->
-		B0 = <<0>>,
-		erts_debug:set_internal_state(available_internal_state,true), % 打开内部状态获取接口 同一个进程只需执行一次
-		f2(B0). % 通过参数传递B0 是为了避免虚拟机优化 直接构造B1为heap binary
+% 通过erts_get_internal_state/1可以获取binary状态
+% 对应函数源码位于$BEAM_SRC/erl_bif_info.c erts_debug_get_internal_state_1
+f() ->
+	B0 = <<0>>,
+	erts_debug:set_internal_state(available_internal_state,true), % 打开内部状态获取接口 同一个进程只需执行一次
+	f2(B0). % 通过参数传递B0 是为了避免虚拟机优化 直接构造B1为heap binary
 
-	f2(B0) ->
-	  io:format("B0: ~p~n", [erts_debug:get_internal_state({binary_info,B0})]),
-	  B1 = <<B0/binary, 1,2,3>>,
-	  io:format("B1: ~p~n", [erts_debug:get_internal_state({binary_info,B1})]),
-	  B2 = <<B1/binary, 4,5,6>>,
-	  io:format("B2: ~p~n", [erts_debug:get_internal_state({binary_info,B2})]),
-	  ok.
+f2(B0) ->
+  io:format("B0: ~p~n", [erts_debug:get_internal_state({binary_info,B0})]),
+  B1 = <<B0/binary, 1,2,3>>,
+  io:format("B1: ~p~n", [erts_debug:get_internal_state({binary_info,B1})]),
+  B2 = <<B1/binary, 4,5,6>>,
+  io:format("B2: ~p~n", [erts_debug:get_internal_state({binary_info,B2})]),
+  ok.
 	
-	% get_internal_state({binary_info, B})返回格式:
-	% proc binary：{refc_binary, pb_size, {binary, orig_size}, pb_flags}
-	% heap binary：heap_binary
-	B0: heap_binary
-	B1: {refc_binary,4,{binary,256},3}
-	B2: {refc_binary,7,{binary,256},3}
-	{% endcodeblock %}
+% get_internal_state({binary_info, B})返回格式:
+% proc binary：{refc_binary, pb_size, {binary, orig_size}, pb_flags}
+% heap binary：heap_binary
+B0: heap_binary
+B1: {refc_binary,4,{binary,256},3}
+B2: {refc_binary,7,{binary,256},3}
+```
 	
 binary追加实现源码位于`$BEAM_SRC/erl_bits.c erts_bs_append`，B1和B2本身是sub binary，基于同一个ProcBin，可追加的refc binary只能被一个ProcBin引用，这是因为可追加refc binary可能会在追加过程中重新分配空间，此时要更新ProcBin引用，而refc binary无法快速追踪到其所有ProcBin引用(只能遍历)，另外，多个ProcBin上的sub binary可能对refc binary覆写。
 
@@ -311,14 +316,14 @@ map是OTP 17引进的数据结构，是一个boxed对象，它支持任意类型
 
 在[OTP17][erlang_otp_17_src]中，map的内存结构为：
 
-	{% codeblock lang:c %} 
-	//位于 $OTP_SRC/erts/emulator/beam/erl_map.h
-	typedef struct map_s {
-	    Eterm thing_word;	// 	boxed对象header
-	    Uint  size;			// 	map 键值对个数
-	    Eterm keys;      	// 	keys的tuple
-	} map_t;
-	{% endcodeblock %}
+```c
+//位于 $OTP_SRC/erts/emulator/beam/erl_map.h
+typedef struct map_s {
+    Eterm thing_word;	// 	boxed对象header
+    Uint  size;			// 	map 键值对个数
+    Eterm keys;      	// 	keys的tuple
+} map_t;
+```
 
 该结构体之后就是依次存放的Value，因此maps的get操作，需要先遍历keys tuple，找到key所在下标，然后在value中取出该下标偏移对应的值。因此是O(n)复杂度的。详见maps:get源码(`$BEAM_SRC/erl_map.c erts_maps_get`)。
 
@@ -341,97 +346,99 @@ Erlang有个叫array的结构，其名字容易给人误解，它有如下特性
 
 在实现上，array最外层被包装为一个record:
 
-{% codeblock lang:erlang %} 
-	-record(array, {
-		size :: non_neg_integer(),	%% number of defined entries
-		max  :: non_neg_integer(),	%% maximum number of entries
-		default,	%% the default value (usually 'undefined')
-	    elements :: elements(_)     %% the tuple tree
-	}).
-{% endcodeblock %}
+```erlang
+-record(array, {
+	size :: non_neg_integer(),	%% number of defined entries
+	max  :: non_neg_integer(),	%% maximum number of entries
+	default,	%% the default value (usually 'undefined')
+    elements :: elements(_)     %% the tuple tree
+}).
+```
 	
 elements是一个tuple tree，即用tuple包含tuple的方式组成的树，叶子节点就是元素值，元素默认以10个为一组，亦即完全展开的情况下，是一颗十叉树。但是对于没有赋值的节点，array用其叶子节点数量代替，并不展开：
 
-	Eshell V7.0.2  (abort with ^G)
-	1> array:set(9,value,array:new()).
-	{array,10,10,undefined, % 全部展开
-	       {undefined,undefined,undefined,undefined,undefined,
-	undefined,undefined,undefined,undefined,value}}
+```erlang
+Eshell V7.0.2  (abort with ^G)
+1> array:set(9,value,array:new()).
+{array,10,10,undefined, % 全部展开
+       {undefined,undefined,undefined,undefined,undefined,
+undefined,undefined,undefined,undefined,value}}
 	
-	% 只展开了19所在的子树 其它9个节点未展开 
-	% 注意tuple一共有11个元素，最后一个元素代表本层节点的基数，这主要是出于效率考虑，能够快速检索到元素所在子节点
-	2> array:set(19,value,array:new()).
-	{array,20,100,undefined,
-	       {10,		
-	        {undefined,undefined,undefined,undefined,undefined，	undefined,undefined,undefined,undefined,value},
-	        10,10,10,10,10,10,10,10,10}}
+% 只展开了19所在的子树 其它9个节点未展开 
+% 注意tuple一共有11个元素，最后一个元素代表本层节点的基数，这主要是出于效率考虑，能够快速检索到元素所在子节点
+2> array:set(19,value,array:new()).
+{array,20,100,undefined,
+       {10,		
+        {undefined,undefined,undefined,undefined,undefined，	undefined,undefined,undefined,undefined,value},
+        10,10,10,10,10,10,10,10,10}}
 	
-	% 逐级展开了199所在的子树
-	3> array:set(199,value,array:new()).
-	{array,200,1000,undefined,
-	       {100,
-	        {10,10,10,10,10,10,10,10,10,
-	         {undefined,undefined,undefined,undefined,undefined,
-	 undefined,undefined,undefined,undefined,value},
-	         10},
-	        100,100,100,100,100,100,100,100,100}}
-	4>
+% 逐级展开了199所在的子树
+3> array:set(199,value,array:new()).
+{array,200,1000,undefined,
+       {100,
+        {10,10,10,10,10,10,10,10,10,
+         {undefined,undefined,undefined,undefined,undefined,
+ undefined,undefined,undefined,undefined,value},
+         10},
+        100,100,100,100,100,100,100,100,100}}
+4>
+```
 
 由于完全展开的tuple tree是一颗完全十叉树，因此实际上array的自动扩容也是以10为基数的。在根据Index查找元素时，通过div/rem逐级算出Index所属节点:
 
-{% codeblock lang:erlang %} 
-	%% 位于$OTP_SRC/lib/stdlib/src/array.erl
-	get(I, #array{size = N, max = M, elements = E, default = D})
-	  when is_integer(I), I >= 0 ->
-	    if I < N ->		% 有效下标
-		    get_1(I, E, D);
-	       M > 0 ->		% I>=N 并且 array处于自动扩容模式 直接返回DefaultValue 
-		    D;
-	       true ->		% I>=N 并且 array为固定大小  返回badarg
-		    erlang:error(badarg)
-	    end;
-	get(_I, _A) ->
-	    erlang:error(badarg).
-	
-	%% The use of NODEPATTERN(S) to select the right clause is just a hack,
-	%% but it is the only way to get the maximum speed out of this loop
-	%% (using the Beam compiler in OTP 11).
-	
-	% -define(NODEPATTERN(S), {_,_,_,_,_,_,_,_,_,_,S}). % NODESIZE+1 elements!
-	get_1(I, E=?NODEPATTERN(S), D) ->		% 到达已展开的中间节点 向下递归
-	    get_1(I rem S, element(I div S + 1, E), D);
-	get_1(_I, E, D) when is_integer(E) ->	% 到达未展开的中间节点 返回默认值
+```erlang
+%% 位于$OTP_SRC/lib/stdlib/src/array.erl
+get(I, #array{size = N, max = M, elements = E, default = D})
+  when is_integer(I), I >= 0 ->
+    if I < N ->		% 有效下标
+	    get_1(I, E, D);
+       M > 0 ->		% I>=N 并且 array处于自动扩容模式 直接返回DefaultValue 
 	    D;
-	get_1(I, E, _D) ->						% 到达叶子节点层
-	    element(I+1, E).
+       true ->		% I>=N 并且 array为固定大小  返回badarg
+	    erlang:error(badarg)
+    end;
+get(_I, _A) ->
+    erlang:error(badarg).
+	
+%% The use of NODEPATTERN(S) to select the right clause is just a hack,
+%% but it is the only way to get the maximum speed out of this loop
+%% (using the Beam compiler in OTP 11).
+	
+% -define(NODEPATTERN(S), {_,_,_,_,_,_,_,_,_,_,S}). % NODESIZE+1 elements!
+get_1(I, E=?NODEPATTERN(S), D) ->		% 到达已展开的中间节点 向下递归
+    get_1(I rem S, element(I div S + 1, E), D);
+get_1(_I, E, D) when is_integer(E) ->	% 到达未展开的中间节点 返回默认值
+    D;
+get_1(I, E, _D) ->						% 到达叶子节点层
+    element(I+1, E).
 
-	set(I, Value, #array{size = N, max = M, default = D, elements = E}=A)
-	  when is_integer(I), I >= 0 ->
-	    if I < N ->
-		    A#array{elements = set_1(I, E, Value, D)};
-	       I < M ->		% 更新size, size的主要作用是让读取更加高效 
-		    %% (note that this cannot happen if M == 0, since N >= 0)
-		    A#array{size = I+1, elements = set_1(I, E, Value, D)};
-	       M > 0 ->		% 自动扩容
-		    {E1, M1} = grow(I, E, M),
-		    A#array{size = I+1, max = M1,
-			    elements = set_1(I, E1, Value, D)};
-	       true ->
-		    erlang:error(badarg)
-	    end;
-	set(_I, _V, _A) ->
-	    erlang:error(badarg).
+set(I, Value, #array{size = N, max = M, default = D, elements = E}=A)
+  when is_integer(I), I >= 0 ->
+    if I < N ->
+	    A#array{elements = set_1(I, E, Value, D)};
+       I < M ->		% 更新size, size的主要作用是让读取更加高效 
+	    %% (note that this cannot happen if M == 0, since N >= 0)
+	    A#array{size = I+1, elements = set_1(I, E, Value, D)};
+       M > 0 ->		% 自动扩容
+	    {E1, M1} = grow(I, E, M),
+	    A#array{size = I+1, max = M1,
+		    elements = set_1(I, E1, Value, D)};
+       true ->
+	    erlang:error(badarg)
+    end;
+set(_I, _V, _A) ->
+    erlang:error(badarg).
 	
-	%% See get_1/3 for details about switching and the NODEPATTERN macro.
+%% See get_1/3 for details about switching and the NODEPATTERN macro.
 	
-	set_1(I, E=?NODEPATTERN(S), X, D) ->		% 所在节点已展开，向下递归
-	    I1 = I div S + 1,
-	    setelement(I1, E, set_1(I rem S, element(I1, E), X, D));
-	set_1(I, E, X, D) when is_integer(E) ->	% 所在节点未被展开，递归展开节点 并赋值
-	    expand(I, E, X, D);
-	set_1(I, E, X, _D) ->						% 到达叶子节点
-	    setelement(I+1, E, X).
-{% endcodeblock %}
+set_1(I, E=?NODEPATTERN(S), X, D) ->		% 所在节点已展开，向下递归
+    I1 = I div S + 1,
+    setelement(I1, E, set_1(I rem S, element(I1, E), X, D));
+set_1(I, E, X, D) when is_integer(E) ->	% 所在节点未被展开，递归展开节点 并赋值
+    expand(I, E, X, D);
+set_1(I, E, X, _D) ->						% 到达叶子节点
+    setelement(I+1, E, X).
+```
 
 更多细节可以参见源码，了解了这些之后，再来看看Erlang array和其它语言数组不一样的地方：
 

@@ -1,6 +1,11 @@
 ### NODE.JS基本命令:
 
 - node.js和npm 安装: https://nodejs.org/en/download/
+- 更新npm:
+	- https://registry.npmjs.org/npm/-/npm-{VERSION}.tgz
+	- npm install npm@latest -g
+- 更新node:
+	- npm install -g n && n stable
 - package.json: 位于每个项目根目录下，用于定义这个项目需要用到的各个模块及版本，以及项目本身的配置信息。`npm install`会自动根据package.json安装项目所需模块依赖（默认放在项目根目录的node_modules下）。[参考](http://javascript.ruanyifeng.com/nodejs/packagejson.html)。
 - `NODE_PATH`: NODE中用来寻找模块所提供的路径注册环境变量。[参考](https://segmentfault.com/a/1190000002478924)。模块搜索顺序：当前目录向上递归，如果没有找到，则用NODE\_PATH下注册的路径。
 - npm命令:
