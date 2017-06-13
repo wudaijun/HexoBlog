@@ -32,6 +32,8 @@ array的特性:
 
 ### 2. slice
 
+#### 数组切片
+
 slice(切片)，提供描述array部分连续元素的能力。
 
 >> A slice is a data structure describing a contiguous section of an array stored separately from the slice variable itself. A slice is not an array. A slice describes a piece of an array.
@@ -93,6 +95,37 @@ func Extend(slice []int, element int ){
 
 BTW，在Go里面的参数传递都是值传递的，只是针对各种类型，其值语义不同，比如int,array它们的值语义就是数据本身，不包含对外的引用(指针)，因此在传参时会完整拷贝整个数据，是没有副作用的。而对slice来说，其值语义中包含对数组的引用，因此在传参时，其引用内容可能被修改，但其值语义(sliceHeader)本身仍然是完整拷贝的。
 
+#### 动态数组
+
+前面提到slice本质上是数组切片，但slice本身也可以作为动态数组:
+
+{% codeblock lang:go %}
+func main(){
+	a := [5]int{1,2,3,4,5}
+	s := a[0:3]
+	fmt.Println("cap: ",cap(s),"len: ",len(s),"slice: ",s,"array: ",a)
+	// len=3 cap=5 capacity足够 无需重新分配 因此修改会作用于a之上
+	s = append(s, 6, 7)
+	fmt.Println("cap: ",cap(s),"len: ",len(s),"slice: ",s,"array: ",a)
+	// len=5 cap=5 append通过make()重新分配新的slice 并通过copy()拷贝已有元素
+	// 此后s不再指向a 而指向新分配的连续内存空间
+	s = append(s, 8)
+	fmt.Println("cap: ",cap(s),"len: ",len(s),"slice: ",s,"array: ",a)
+	// 对s的修改将不在作用于a上
+	s[0] = 0
+	fmt.Println("cap: ",cap(s),"len: ",len(s),"slice: ",s,"array: ",a)
+}
+// 输出:
+cap:  5 len:  3 slice:  [1 2 3] array:  [1 2 3 4 5]
+cap:  5 len:  5 slice:  [1 2 3 6 7] array:  [1 2 3 6 7]
+cap:  10 len:  6 slice:  [1 2 3 6 7 8] array:  [1 2 3 6 7]
+cap:  10 len:  6 slice:  [0 2 3 6 7 8] array:  [1 2 3 6 7]
+{% endcodeblock %}
+
+
+append会在**len(s)+添加的元素个数>cap(s)时**，重新分配(make)一个slice，拷贝(copy)已有元素，添加新元素，最后返回这个新的slice。在使用append时，需要保存其返回值，因为append传入的是slice的值，也就是sliceHeader结构体，当slice capacity扩展时，append函数内不能修改sliceHeader中的Length和Capacity字段，因此需要返回一个新的sliceHeader。
+
+为了避免混淆，不要像上例一样将slice的切片特性和动态数组特性混用，使用动态数组时，使用空的slice(`var s []int`)或make(`make([]int, len, cap)`)初始化一个slice会比较好。
 
 ### 3. string
 
@@ -341,6 +374,8 @@ func selectnbsend(t *chantype, c *hchan, elem unsafe.Pointer) (selected bool) {
 ```
 
 select的if-elseif-else语句分支顺序是随机的，在每次执行select时会将所有scase(包含hchan)顺序随机排列。参考src/runtime/select.go hselect和scase结构体。
+
+通过`cap(chan)`和`len(chan)`可以获取channel的缓冲区大小(dataqsize)和当前消息数量(qcount)。
 
 ### 6. interface
 

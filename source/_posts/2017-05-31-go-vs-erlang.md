@@ -46,15 +46,16 @@ Go语言并没有完全实现CSP理论(参见[知乎讨论](https://www.zhihu.co
 - 相同的宗旨："不要通过共享内存来通信，而应该通过通信来共享内存"
 - 两者都有独立的，并发执行的通信实体
 - Actor第一类对象为执行实体(actor)，CSP第一类对象为通信介质(channel)
-- Actor中实体和通信介质是紧耦合的，一个Actor持有一个Mailbox，而CSP中process和channel是解耦的，没有从属关系。从这一层来说，CSP更加灵活，如可以处理不同channel消息的优先级
-- Actor模型中actor是主体，mailbox是匿名的，CSP模型中channel是主体，process是匿名的。从这一层来说，由于Actor不关心通信介质，因此在分布式和容错方面更有优势
+- Actor中实体和通信介质是紧耦合的，一个Actor持有一个Mailbox，而CSP中process和channel是解耦的，没有从属关系。从这一层来说，CSP更加灵活，如process可以处理不同channel消息的优先级，也可以让多个process分摊处理同一个channel的消息
+- Actor模型中actor是主体，mailbox是匿名的，CSP模型中channel是主体，process是匿名的。从这一层来说，由于Actor不关心通信介质，底层通信对应用层是透明的。因此在分布式和容错方面更有优势
 
 ### Go vs Erlang
 
-- CSP vs Actor并发范式的种种关联与区别
+- 以上 CSP vs Actor
 - 均实现了语言级的coroutine，在阻塞时能自动让出调度资源，在可执行时重新接受调度
-- erlang/otp在actor上扩展了分布式支持，热更和高容错，这些都是go欠缺的
-- go的channel是有容量限制的，因此只能一定程度地异步，erlang的mailbox是无限制的，是纯粹的异步语义，但也带来的消息队列膨胀的危险
+- go的channel是有容量限制的，因此只能一定程度地异步(本质上仍然是同步的)，erlang的mailbox是无限制的(也带来了消息队列膨胀的风险)，并且erlang并不保证消息是否能到达和被正确处理(但保证消息顺序)，是纯粹的异步语义，actor之间做到完全解耦，奠定其在分布式和容错方面的基础
+- erlang/otp在actor上扩展了分布式(支持异质节点)，热更和高容错，go在这些方面还有一段路要走(受限于channel，想要在语言级别支持分布式是比较困难的)
+- go在消息流控上要做得更好，因为channel的两个特性: 有容量限制并独立于goroutine存在。前者可以控制消息流量并反馈消息处理进度，后者让goroutine本身有更高的处理灵活性。典型的应用场景是扇入扇出，Boss-Worker等。相比go，erlang进程总是被动低处理消息，如果要做流控，需要自己做消息进度反馈和队列控制，灵活性要差很多。
 
 ### Actor in Go 
 
@@ -67,7 +68,7 @@ Go语言并没有完全实现CSP理论(参见[知乎讨论](https://www.zhihu.co
 
 到目前为止，goroutine和channel解耦的优势并未体现出来，我认为主要的原因仍然是GS执行实体的强状态性和对异步交互流程的顺序性导致的。
 
-在研究这个问题的过程中，发现已经有人已经用go实现了支持分布式的Actor模型: https://github.com/AsynkronIT/protoactor-go。 真是有种他山逢知音的感觉。:)
+在研究这个问题的过程中，发现已经有人已经用go实现了Actor模型: https://github.com/AsynkronIT/protoactor-go。 支持分布式，甚至supervisor，整体思想和用法和erlang非常像，真是有种他山逢知音的感觉。:)
 
 参考：
 
