@@ -89,6 +89,18 @@ Docker和其它虚拟机或容器技术相比，一是轻量，开销很小，�
 
 其它容器网络配置选项参见`docker run --help`以及[Docker run Reference][]。
 
+### 3. 容器持久化
+
+镜像是分层存储的，容器也一样，每一个容器以镜像为基础层，在其上构建一个当前容器的可读可写层，容器对文件的所有更改都基于这一层。容器的可读可写层的生命周期与容器一样，当容器消亡时，容器在可读可写层作出的任何更改都将丢失(容器不能对基础镜像作出任何更改)。
+
+有几种方式可以持久化容器作出的更改:
+
+1. 通过`docker commit`以镜像构建的方式将可读可写层提交为一个新的镜像(`docker commit`是`docker run`的逆操作)。这种方式并不推荐，因为手动commit构建的镜像没有Dockerfile说明，是"隐晦"的，使用者并不知道你对镜像作出了何种修改。
+2. 在运行容器时指定`docker run -v hostdir:containerdir`来将宿主机上的某个目录挂载到容器的指定目录下，这样容器对该目录作出的所有更改，都直接写入到宿主机上，效率也更高。这通常用于在容器中导出应用日志和数据，这样容器消亡后，日志和数据信息不会丢失。
+3. 通过网络IO，将数据持久化到其它地方，如mongo，redis等。
+
+我们在运行容器时，要尽量保证容器的运行是"无状态"的，即容器可以随时被终止而重要数据不会丢失。
+
 ## 三. Docker 镜像
 
 ### 1. Dockerfile
@@ -291,18 +303,20 @@ build镜像：
 
 我们的容器大小只是近300M，因此Docker镜像的大小和容器中文件系统内容的大小是两个概念。镜像的大小等于其包含的所有镜像层之和，并且由于镜像层共享技术的存在(比如我们再构建一个基于ubuntu14:04的镜像，将直接复用本地已有的ubuntu镜像层)，极大节省了磁盘空间。
 
+## 四. 其它
 
-## 四. 参考
+在使用Docker时，要注意平台之间实现的差异性，如[Docker For Mac]的实现和标准Docker规范有区别，Docker For Mac的Docker Daemon是运行于虚拟机中的，没有docker0网桥，因此不能实现 host 网络模式，并且不能配置Container互联。参考: https://docs.docker.com/docker-for-mac/networking/。
 
 1. [Dockerfile Best Practices][]
 2. [Dockerfile Reference][]
 3. [Docker run Reference][]
-3. [Allen谈Docker系列][]
+4. [Docker 从入门到实践][]
 
 [Docker Hub]: http://hub.docker.com/
 [Docker Store]: https://store.docker.com/
 [Dockerfile Best Practices]: https://docs.docker.com/engine/userguide/eng-image/dockerfile_best-practices
 [Dockerfile Reference]: https://docs.docker.com/engine/reference/builder/
-[Allen谈Docker系列]: http://docs.daocloud.io/allen-docker
 [Docker源码分析(七)：Docker Container网络(上)]: http://www.infoq.com/cn/articles/docker-source-code-analysis-part7
 [Docker run Reference]: https://docs.docker.com/engine/reference/run/
+[Docker 从入门到实践]: https://www.gitbook.com/book/yeasy/docker_practice/details
+[Docker For Mac]: https://docs.docker.com/docker-for-mac/
