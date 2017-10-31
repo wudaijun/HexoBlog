@@ -10,16 +10,24 @@ layout: post
 
 不定参数只能是最后一个参数，它实际上是数组切片参数的语法糖：
 
-	// 语法糖 相当于 func myfunc(args []int)
-	func myfunc(args ...int){
+	// 语法糖 相当于 func myfunc(args []interface{})
+	func myfunc(args ...interface{}){
 		for _, arg := range args {        fmt.Println(arg)
 	}
 	
-	// 语法糖 等价于 myfunc([]int{1,3,5,7,9})
-	myfunc(1,3,5,7,9)
+	// 参数会被打包为 []{arg1,arg2,arg3}
+	myfunc(arg1,arg2,arg3)
+	// 要完成可变参数的完美传递 需要用...将Slice打散
+	func myfunc2(args ...interface{})
+		// 此时args已经是Slice 如果不打散将作为一个参数 不能完美传递
+		myfunc(args)
+		// 编译器在此处有优化 最终会直接将args传入 不会打散再打包 参考: http://www.jianshu.com/p/94710d8ab691
+		myfunc(args...) 
+	end
 	
 	
-多返回值为函数提供了更大的便利性，无需传引用或者专门构造返回值结构体，并且在错误处理方面也更简便:
+	
+多返回值为函数提供了更大的便利性，无需传引用或者专门构造返回值结构体，并且在错误处理方面也更简便，在前面的示例代码中已经初尝甜头。
 
 	// 定义多返回值函数时，可以为返回值指定名字
 	func (file *File) Read(b []byte) (n int, err Error){
