@@ -65,7 +65,7 @@ pagination_dir: page
 ## Plugins: http://hexo.io/plugins/
 ## Themes: http://hexo.io/themes/
 ## theme: light-cn
-theme: indigo
+theme: BlueLake
 
 archive_generator:
     per_page: 0
