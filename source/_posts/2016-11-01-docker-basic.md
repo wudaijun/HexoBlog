@@ -1,7 +1,7 @@
 ---
 title: Docker 学习
 layout: post
-categories: Tool
+categories: tool
 tags: docker
 
 ---
@@ -69,27 +69,8 @@ Docker和其它虚拟机或容器技术相比，一是轻量，开销很小，�
     docker exec [OPTIONS] CONTAINER COMMAND [ARG...]
     也可使用第三方工具如nsenter来进入容器
 
-### 2. 网络模式
 
-以Docker为平台部署服务器时，最应该理解透彻的便是网络配置，因此单独拿出来说一下。
-
-通过`docker run`的`--network`选项可配置容器的网络模式，Docker提供了多种网络工作模式：
-
-- none 模式(`--network none`)：不为Docker容器进行任何网络配置，容器将不能访问任何外部的路由(容器内部仍然有loopback接口)，与外部只能通过文件IO和标准输入输出交互。
-- bridge 模式(`--netwok bridge`)：默认设置，此模式下，容器有自己的独立的Network Namespace。bridge模式的详细实现可参考[Docker源码分析(七)：Docker Container网络(上)][]，简单来说，Docker在宿主机上虚拟了一个子网络，宿主机上所有容器均在这个子网络中获取IP，这个子网通过网桥挂在宿主机网络上。Docker通过NAT技术确保容器可与宿主机外部网络交互。
-- host 模式(`--network host`)：与宿主机共用网络栈，IP和端口，容器本身看起来就像是个普通的进程，它暴露的端口可直接通过宿主机访问。相比于bridge模式，host模式有显著的性能优势(因为走的是宿主机的网络栈，而不是docker deamon为容器虚拟的网络栈)。
-- container 模式(`--network container:<name|id>`)：和host模式类似，新创建的容器将与已经存在的一个容器共享IP，端口和网络栈。两个容器之间可通过localhost进行通信。
-
-这里再提一下bridge模式，在bridge模式下，一个宿主机上的所有容器都在一个子网中(通常是`172.17.0.1/16`)，同一个宿主机上的容器之间，以及容器与宿主机之间可以直接通过IP交互。而对于宿主机之外的网络：
-
-- 容器访问外部网络时，会在宿主机上分配一个可用端口，通过这个端口做SNAT转换(将容器IP:Port换为宿主机IP:Port)，再向外部网络发出请求。当外部响应到达时，Docker再根据这一层端口映射关系，将响应路由给容器IP:Port
-- 外部网络要访问容器Port0，需要先将Port0与宿主机Port1绑定(外部网络无法直接访问宿主机二级网络)，将宿主机IP:Port1暴露给外部网络，外部网络请求到达宿主机时，会进行DNAT转换(将宿主机IP:Port1换为容器IP:Port0)
-
-归根结底，Docker容器在bridge模式下不具有一个公有IP，即和宿主机的eth0不处于同一个网段。导致的结果是宿主机以外的世界不能直接和容器进行通信。虽然NAT模式经过中间处理实现了这一点，但是NAT模式仍然存在问题与不便，如：容器均需要在宿主机上竞争端口，容器内部服务的访问者需要使用服务发现获知服务的外部端口等。另外NAT模式会一定程度的影响网络传输效率。
-
-其它容器网络配置选项参见`docker run --help`以及[Docker run Reference][]。
-
-### 3. 容器持久化
+### 2. 容器持久化
 
 镜像是分层存储的，容器也一样，每一个容器以镜像为基础层，在其上构建一个当前容器的可读可写层，容器对文件的所有更改都基于这一层。容器的可读可写层的生命周期与容器一样，当容器消亡时，容器在可读可写层作出的任何更改都将丢失(容器不能对基础镜像作出任何更改)。
 
@@ -303,10 +284,6 @@ build镜像：
 
 我们的容器大小只是近300M，因此Docker镜像的大小和容器中文件系统内容的大小是两个概念。镜像的大小等于其包含的所有镜像层之和，并且由于镜像层共享技术的存在(比如我们再构建一个基于ubuntu14:04的镜像，将直接复用本地已有的ubuntu镜像层)，极大节省了磁盘空间。
 
-## 四. 其它
-
-在使用Docker时，要注意平台之间实现的差异性，如[Docker For Mac]的实现和标准Docker规范有区别，Docker For Mac的Docker Daemon是运行于虚拟机(xhyve)中的(而不是像Linux上那样作为进程运行于宿主机)，因此Docker For Mac没有docker0网桥，不能实现host网络模式，host模式会使Container复用Daemon的网络栈(在xhyve虚拟机中)，而不是与Host主机网络栈，这样虽然其它容器仍然可通过xhyve网络栈进行交互，但却不是用的Host上的端口(在Host上无法访问)。bridge网络模式 -p 参数不受此影响，它能正常打开Host上的端口并映射到Container的对应Port。文档在这一点上并没有充分说明，容易踩坑。参考: https://docs.docker.com/docker-for-mac/networking/和https://forums.docker.com/t/should-docker-run-net-host-work/14215
-
 1. [Dockerfile Best Practices][]
 2. [Dockerfile Reference][]
 3. [Docker run Reference][]
@@ -316,7 +293,6 @@ build镜像：
 [Docker Store]: https://store.docker.com/
 [Dockerfile Best Practices]: https://docs.docker.com/engine/userguide/eng-image/dockerfile_best-practices
 [Dockerfile Reference]: https://docs.docker.com/engine/reference/builder/
-[Docker源码分析(七)：Docker Container网络(上)]: http://www.infoq.com/cn/articles/docker-source-code-analysis-part7
 [Docker run Reference]: https://docs.docker.com/engine/reference/run/
 [Docker 从入门到实践]: https://www.gitbook.com/book/yeasy/docker_practice/details
 [Docker For Mac]: https://docs.docker.com/docker-for-mac/
