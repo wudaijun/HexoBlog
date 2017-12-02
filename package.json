@@ -17,10 +17,11 @@
     "hexo-generator-json-content": "^2.2.0",
     "hexo-generator-sitemap": "^1.1.2",
     "hexo-generator-tag": "^0.1.1",
+    "hexo-inject": "^1.0.0",
     "hexo-renderer-ejs": "^0.1.0",
     "hexo-renderer-jade": "^0.3.0",
+    "hexo-renderer-kramed": "^0.1.4",
     "hexo-renderer-less": "^0.2.0",
-    "hexo-renderer-marked": "^0.2.4",
     "hexo-renderer-stylus": "^0.3.3",
     "hexo-server": "^0.1.3"
   }

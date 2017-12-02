@@ -21,3 +21,7 @@
 	
 		
 		
+
+mathjax: 公式渲染引擎解决方案:
+	卸载默认hexo-render-markd
+	安装新的hexo-render-kramed渲染引擎
