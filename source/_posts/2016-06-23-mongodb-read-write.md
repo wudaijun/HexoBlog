@@ -84,6 +84,7 @@ MongoDB支持灵活的写入策略([WriteConcern][write concern]):
 MongoDB CURD概念： https://docs.mongodb.com/manual/core/crud/
 
 [cursor.snapshot()]: https://docs.mongodb.com/manual/reference/method/cursor.snapshot/
+[cursor.explain()]:https://docs.mongodb.com/manual/reference/method/cursor.explain/#cursor.explain
 [cursor.noCursorTimeout()]: https://docs.mongodb.com/manual/reference/method/cursor.noCursorTimeout/#cursor.noCursorTimeout
 [cursor.maxTimeMs()]: https://docs.mongodb.com/manual/reference/method/cursor.maxTimeMS/
 [cursor.batchSize()]: https://docs.mongodb.com/manual/reference/method/cursor.batchSize/#cursor.batchSize
