@@ -141,6 +141,7 @@ type imethod struct {
 为了提高查找效率，runtime中实现(interface_type, concrete_type) -> itab(包含具体方法实现地址等信息)的hash表:
 
 ```go
+// runtime/iface.go
 const (
    hashSize = 1009
 )
@@ -159,12 +160,13 @@ func itabhash(inter *interfacetype, typ *_type) uint32 {
 // 根据interface_type和concrete_type获取或生成itab信息
 func getitab(inter *interfacetype, typ *_type, canfail bool) *itab {
    ...
-
+	// 算出hash key
    h := itabhash(inter, typ)
 
 
    var m *itab
    ...
+   		// 遍历hash slot链表
       for m = (*itab)(atomic.Loadp(unsafe.Pointer(&hash[h]))); m != nil; m = m.link {
          // 如果在hash表中找到则返回
          if m.inter == inter && m._type == typ {
@@ -378,7 +380,7 @@ func assertE2I(inter *interfacetype, e eface) (r iface) {
 
 而在go1.9中，有一些优化:
 
-1. 对convT2x针对简单类型(如int32,string,slice)进行特例化优化(避免typedmemmove):
+1.对convT2x针对简单类型(如int32,string,slice)进行特例化优化(避免typedmemmove):
 
 ```
 convT2E16, convT2I16
@@ -390,15 +392,15 @@ convT2Enoptr, convT2Inoptr
 ```
 据统计，在编译make.bash的时候，有93%的convT2x调用都可通过以上特例化优化。参考[这里](https://go-review.googlesource.com/c/go/+/36476)。
  
-2. 优化了剩余对convT2I的调用
+2.优化了剩余对convT2I的调用
 
 由于itab由编译器生成(参考上面go1.8生成的汇编代码和convT2I函数)，可以直接由编译器将itab和elem直接赋给iface的tab和data字段，避免函数调用和typedmemmove。关于此优化可参考[1](https://go-review.googlesource.com/c/go/+/20901/9)和[2](https://go-review.googlesource.com/c/go/+/20902)。
 
-具体汇编代码不在列出，感兴趣的同学可以自己尝试。
+具体汇编代码不再列出，感兴趣的同学可以自己尝试。
 
 ### 4. 类型反射
  
-类型反射无非就是将eface{}的_type和data字段取出进行解析，针对TypeOf的实现很简单:
+类型反射无非就是将eface{}的\_type和data字段取出进行解析，针对TypeOf的实现很简单:
 
 ```
 // 代码位于relect/type.go
