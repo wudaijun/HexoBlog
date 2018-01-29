@@ -5,9 +5,13 @@ categories: go
 tags: go
 ---
 
+本文从源码的角度学习下Go接口的底层实现，以及接口赋值，反射，断言的实现原理。作为对比，用到了go1.8.6和go1.9.1两个版本。
+
 ### 1. eface
 
 空接口通过eface结构体实现，位于runtime/runtime2.go: 
+
+<!-- more -->
 
 ```go
 // src/runtime/runtime2.go
@@ -540,3 +544,8 @@ func (v Value) Elem() Value {
 }
 
 ```
+
+参考:
+
+1. [Golang汇编快速指南](https://studygolang.com/articles/2917)
+2. [Go Interface源码剖析](http://legendtkl.com/2017/07/01/golang-interface-implement/)
