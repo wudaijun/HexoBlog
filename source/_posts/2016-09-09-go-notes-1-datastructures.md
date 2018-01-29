@@ -93,7 +93,7 @@ func Extend(slice []int, element int ){
 
 >> It's important to understand that even though a slice contains a pointer, it is itself a value. Under the covers, it is a struct value holding a pointer and a length. It is not a pointer to a struct.
 
-BTW，在Go里面的参数传递都是值传递的，只是针对各种类型，其值语义不同，比如int,array它们的值语义就是数据本身，不包含对外的引用(指针)，因此在传参时会完整拷贝整个数据，是没有副作用的。而对slice来说，其值语义中包含对数组的引用，因此在传参时，其引用内容可能被修改，但其值语义(sliceHeader)本身仍然是完整拷贝的。
+BTW，在Go里面的参数传递都是值传递的，只是针对各种类型，其值语义不同，比如int,array它们的值语义就是数据本身，不包含对外的引用(指针)，因此在传参时会完整拷贝整个数据，当然，这里的拷贝是浅拷贝，比如对指针数组这类结构而言，仍然是有副作用的，但这是应用层的东西，就数组容器本身而言，是值拷贝的。而对slice来说，其值语义中包含对数组的引用，因此在传参时，其引用内容可能被修改，但其值语义(sliceHeader)本身仍然是完整拷贝的。
 
 #### 动态数组
 

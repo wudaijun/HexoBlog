@@ -318,8 +318,10 @@ G结构体会复用，对可复用的G管理类似于待运行的G管理，也�
 
 参考资料:
 
-1. [也谈goroutine调度器--TonyBai](http://tonybai.com/2017/06/23/an-intro-about-goroutine-scheduler/)
-2. [Go学习笔记--雨痕](https://github.com/qyuhen/book/blob/master/Go%201.5%20%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90%20%EF%BC%88%E4%B9%A6%E7%AD%BE%E7%89%88%EF%BC%89.pdf)
+1. [scheduler-tracing-in-go](https://www.ardanlabs.com/blog/2015/02/scheduler-tracing-in-go.html)
+2. [也谈goroutine调度器--TonyBai](http://tonybai.com/2017/06/23/an-intro-about-goroutine-scheduler/)
+3. [Go学习笔记--雨痕](https://github.com/qyuhen/book/blob/master/Go%201.5%20%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90%20%EF%BC%88%E4%B9%A6%E7%AD%BE%E7%89%88%EF%BC%89.pdf)
+
     
     
 
