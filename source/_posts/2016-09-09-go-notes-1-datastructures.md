@@ -379,7 +379,7 @@ select的if-elseif-else语句分支顺序是随机的，在每次执行select时
 
 ### 6. interface
 
-interface接口的用法和实现单独放到[go面向对象](http://wudaijun.com/2016/09/go-notes-3-object-oriented/)一节。
+interface接口的用法和实现放到[go面向对象](http://wudaijun.com/2016/09/go-notes-3-object-oriented/)和[go interface实现](http://wudaijun.com/2018/01/go-interface-implement/)中。
 
 ### 7. make & new
 
