@@ -1,5 +1,5 @@
 ---
-title: Go Interface实现
+title: Go Interface 实现
 layout: post
 categories: go
 tags: go
@@ -44,7 +44,7 @@ type _type struct {
 
 \_type是go所有类型的公共描述，里面包含GC，反射等需要的细节，它决定data应该如何解释和操作，这也是它和C void*不同之处。
 各个类型所需要的类型描述是不一样的，比如chan，除了chan本身外，还需要描述其元素类型，而map则需要key类型信息和value类型信息等:
- 
+
 ```go
 // src/runtime/type.go
 // ptrType represents a pointer type.
@@ -72,9 +72,9 @@ type maptype struct {
     needkeyupdate bool   // true if we need to update key on an overwrite
 }
 ```
- 
-这些类型信息的第一个字段都是`_type`(类型本身的信息)，接下来是一堆类型需要的其它详细信息(如子类型信息)，这样在进行类型相关操作时，可通过一个字(`typ *_type`)即可表述所有类型，然后再通过`_type.kind`可解析出其具体类型，最后通过地址转换即可得到类型完整的"\_type树"，参考reflect.Type.Elem()函数:
- 
+
+这些类型信息的第一个字段都是`_type`(类型本身的信息)，接下来是一堆类型需要的其它详细信息(如子类型信息)，这样在进行类型相关操作时，可通过一个字(`typ *_type`)即可表述所有类型，然后再通过`_type.kind`可解析出其具体类型，最后通过地址转换即可得到类型完整的"\_type树"，参考`reflect.Type.Elem()`函数:
+
 {% codeblock lang:go %}
 // reflect/type.go
 // reflect.rtype结构体定义和runtime._type一致  type.kind定义也一致(为了分包而重复定义)
@@ -102,7 +102,7 @@ func (t *rtype) Elem() Type {
    panic("reflect: Elem of invalid type")
 }
 {% endcodeblock %}
- 
+
 ### 2. iface
 
 iface结构体表示非空接口:
@@ -114,7 +114,7 @@ type iface struct {
     tab  *itab
     data unsafe.Pointer
 }
- 
+
 // 非空接口的类型信息
 type itab struct {
     inter  *interfacetype    // 接口定义的类型信息
@@ -160,17 +160,17 @@ func itabhash(inter *interfacetype, typ *_type) uint32 {
    h += 17 * typ.hash
    return h % hashSize
 }
- 
+
 // 根据interface_type和concrete_type获取或生成itab信息
 func getitab(inter *interfacetype, typ *_type, canfail bool) *itab {
    ...
-	// 算出hash key
+    // 算出hash key
    h := itabhash(inter, typ)
 
 
    var m *itab
    ...
-   		// 遍历hash slot链表
+           // 遍历hash slot链表
       for m = (*itab)(atomic.Loadp(unsafe.Pointer(&hash[h]))); m != nil; m = m.link {
          // 如果在hash表中找到则返回
          if m.inter == inter && m._type == typ {
@@ -195,7 +195,7 @@ func getitab(inter *interfacetype, typ *_type, canfail bool) *itab {
    }
    return m
 }
- 
+
 // 检查concrete_type是否符合interface_type 并且创建对应的itab结构体 将其放到hash表中
 func additab(m *itab, locked, canfail bool) {
    inter := m.inter
@@ -258,9 +258,9 @@ func additab(m *itab, locked, canfail bool) {
 ```
 
 可以看到，并不是每次接口赋值都要去检查一次对象是否符合接口要求，而是只在第一次生成itab信息，之后通过hash表即可找到itab信息。
- 
+
 ### 3. 接口赋值
- 
+
 ```go
 type MyInterface interface {
    Print()
@@ -282,40 +282,72 @@ func main() {
 }
 ```
 用go1.8编译并反汇编:
- 
+
     $GO1.8PATH/bin/go build -gcflags '-N -l' -o tmp tmp.go
     $GO1.8PATH/bin/go tool objdump -s "main\.main" tmp
-    
+
 
 ```
+// var i1 interface{} = a
+test.go:16      0x1087146       488b442430                      MOVQ 0x30(SP), AX
+test.go:16      0x108714b       4889442438                      MOVQ AX, 0x38(SP)
+test.go:16      0x1087150       488d05a9e10000                  LEAQ 0xe1a9(IP), AX // 加载a的类型信息(int)
+test.go:16      0x1087157       48890424                        MOVQ AX, 0(SP)
+test.go:16      0x108715b       488d442438                      LEAQ 0x38(SP), AX // 加载a的地址
+test.go:16      0x1087160       4889442408                      MOVQ AX, 0x8(SP)
+test.go:16      0x1087165       e84645f8ff                      CALL runtime.convT2E(SB)
+test.go:16      0x108716a       488b442410                      MOVQ 0x10(SP), AX // 填充i1的type和data
+test.go:16      0x108716f       488b4c2418                      MOVQ 0x18(SP), CX 
+test.go:16      0x1087174       48898424a0000000                MOVQ AX, 0xa0(SP)
+test.go:16      0x108717c       48898c24a8000000                MOVQ CX, 0xa8(SP)
+// var i2 interface{} = b
+// 与i1类似 加载类型信息 调用convT2E
 ...
-tmp.go:18 0x1087165 e84645f8ff CALL runtime.convT2E(SB)    // var i1 interface{} = a
-...
-tmp.go:19 0x10871bc e8ef44f8ff CALL runtime.convT2E(SB)    // var i2 interface{} = b
-...
-tmp.go:20 0x10871f0 e86b45f8ff CALL runtime.convT2I(SB)    // var i3 MyInterface = c
-tmp.go:20       0x10871f5       488b442410                      MOVQ 0x10(SP), AX    // 返回的iface.itab地址
-tmp.go:20       0x10871fa       488b4c2418                      MOVQ 0x18(SP), CX   // 返回的iface.data地址
-tmp.go:20       0x10871ff       4889842480000000                MOVQ AX, 0x80(SP)  // i3.tab = iface.itab
-tmp.go:20       0x1087207       48898c2488000000                MOVQ CX, 0x88(SP)  // i3.data = iface.data
-tmp.go:21       0x108720f       488b842488000000                MOVQ 0x88(SP), AX
-tmp.go:21       0x1087217       488b8c2480000000                MOVQ 0x80(SP), CX
-tmp.go:21       0x108721f       48898c24e0000000                MOVQ CX, 0xe0(SP) // 0xe0(SP) = i3.tab
-tmp.go:21       0x1087227       48898424e8000000                MOVQ AX, 0xe8(SP) // 0xe8(SP) = i3.data
-tmp.go:21       0x108722f       48894c2448                      MOVQ CX, 0x48(SP)
-...
+test.go:17      0x10871bc       e8ef44f8ff                      CALL runtime.convT2E(SB)
+test.go:17      0x10871c1       488b442410                      MOVQ 0x10(SP), AX
+test.go:17      0x10871c6       488b4c2418                      MOVQ 0x18(SP), CX
+test.go:17      0x10871cb       4889842490000000                MOVQ AX, 0x90(SP)
+test.go:17      0x10871d3       48898c2498000000                MOVQ CX, 0x98(SP)
+// var i3 MyInterface = c
+test.go:18      0x10871db       488d051e000800                  LEAQ 0x8001e(IP), AX // 加载c的类型信息(MyStruct)
+test.go:18      0x10871e2       48890424                        MOVQ AX, 0(SP)
+test.go:18      0x10871e6       488d442430                      LEAQ 0x30(SP), AX
+test.go:18      0x10871eb       4889442408                      MOVQ AX, 0x8(SP)
+test.go:18      0x10871f0       e86b45f8ff                      CALL runtime.convT2I(SB)
+test.go:18      0x10871f5       488b442410                      MOVQ 0x10(SP), AX
+test.go:18      0x10871fa       488b4c2418                      MOVQ 0x18(SP), CX
+test.go:18      0x10871ff       4889842480000000                MOVQ AX, 0x80(SP)
+test.go:18      0x1087207       48898c2488000000                MOVQ CX, 0x88(SP)
 // var i4 interface{} = i3
-tmp.go:21       0x108724b       488b8424e8000000                MOVQ 0xe8(SP), AX    // 加载i3的data
-tmp.go:21       0x1087253       488b4c2448                      MOVQ 0x48(SP), CX    // 加载i3的tab(即interfacetype地址)
-tmp.go:21       0x1087258       48894c2470                      MOVQ CX, 0x70(SP)    // i4._type = i3.interfacetype
-tmp.go:21       0x108725d       4889442478                      MOVQ AX, 0x78(SP)   // i4.data = i3.data
+test.go:19      0x108720f       488b842488000000                MOVQ 0x88(SP), AX
+test.go:19      0x1087217       488b8c2480000000                MOVQ 0x80(SP), CX // CX = i3.itab
+test.go:19      0x108721f       48898c24e0000000                MOVQ CX, 0xe0(SP) 
+test.go:19      0x1087227       48898424e8000000                MOVQ AX, 0xe8(SP) // 0xe8(SP) = i3.data
+test.go:19      0x108722f       48894c2448                      MOVQ CX, 0x48(SP) 
+test.go:19      0x1087234       4885c9                          TESTQ CX, CX
+test.go:19      0x1087237       7505                            JNE 0x108723e
+test.go:19      0x1087239       e915020000                      JMP 0x1087453
+test.go:19      0x108723e       8401                            TESTB AL, 0(CX)
+test.go:19      0x1087240       488b4108                        MOVQ 0x8(CX), AX // (i3.itab+8) 得到 &i3.itab.typ，因此AX=i3.itab.typ 即iface指向对象的具体类型信息，这里是MyStruct
+test.go:19      0x1087244       4889442448                      MOVQ AX, 0x48(SP) // 0x48(SP) = i3.itab.typ
+test.go:19      0x1087249       eb00                            JMP 0x108724b
+test.go:19      0x108724b       488b8424e8000000                MOVQ 0xe8(SP), AX // AX = i3.data
+test.go:19      0x1087253       488b4c2448                      MOVQ 0x48(SP), CX // CX = i3.itab.typ
+test.go:19      0x1087258       48894c2470                      MOVQ CX, 0x70(SP) // i4.typ = i3.itab.typ
+test.go:19      0x108725d       4889442478                      MOVQ AX, 0x78(SP) // i4.data = i3.data
+// var i5 = i4.(MyInterface)
+test.go:20      0x1087262       48c78424f000000000000000        MOVQ $0x0, 0xf0(SP)
+test.go:20      0x108726e       48c78424f800000000000000        MOVQ $0x0, 0xf8(SP)
+test.go:20      0x108727a       488b442478                      MOVQ 0x78(SP), AX
+test.go:20      0x108727f       488b4c2470                      MOVQ 0x70(SP), CX
+test.go:21      0x1087284       488d1535530100                  LEAQ 0x15335(IP), DX
+test.go:20      0x108728b       48891424                        MOVQ DX, 0(SP) // 压入 MyInterface 的 interfacetype
+test.go:20      0x108728f       48894c2408                      MOVQ CX, 0x8(SP) // 压入 i4.type
+test.go:20      0x1087294       4889442410                      MOVQ AX, 0x10(SP) // 压入 i4.data
+test.go:20      0x1087299       e87245f8ff                      CALL runtime.assertE2I(SB) // func assertE2I(inter *interfacetype, e eface) (r iface)
 ...
-// var i5 = i4.(MyInterface)﻿​
-tmp.go:22       0x1087299       e87245f8ff                      CALL runtime.assertE2I(SB)
-...
- 
 ```
- 
+
 可以看到编译器通过convT2E和convT2I将编译器已知的类型赋给接口(其中E代表eface，I代表iface，T代表编译器已知类型，即静态类型)，编译器知晓itab的布局，会在编译期检查接口是否适配，并且生成itab信息，因此编译器生成的convT2X调用是必然成功的。
 
 对于接口间的赋值，将iface赋给eface比较简单，直接提取eface的interfacetype和data赋给iface即可。而反过来，则需要使用接口断言，接口断言通过assertE2I, assertI2I等函数来完成，这类assert函数根据使用方调用方式有两个版本:
@@ -326,7 +358,7 @@ i5, ok := i4.(MyInterface)  //  call conv.AssertE2I2
 ```
 
 下面看一下几个常用的conv和assert函数实现:
- 
+
 ```go
 // go1.8/src/runtime/iface.go
 func convT2E(t *_type, elem unsafe.Pointer) (e eface) {
@@ -367,7 +399,7 @@ func convT2I(tab *itab, elem unsafe.Pointer) (i iface) {
     i.data = x
     return
 }
- 
+
 func assertE2I(inter *interfacetype, e eface) (r iface) {
     t := e._type
     if t == nil {
@@ -395,16 +427,20 @@ convT2Eslice, convT2Islice
 convT2Enoptr, convT2Inoptr
 ```
 据统计，在编译make.bash的时候，有93%的convT2x调用都可通过以上特例化优化。参考[这里](https://go-review.googlesource.com/c/go/+/36476)。
- 
+
 2.优化了剩余对convT2I的调用
 
 由于itab由编译器生成(参考上面go1.8生成的汇编代码和convT2I函数)，可以直接由编译器将itab和elem直接赋给iface的tab和data字段，避免函数调用和typedmemmove。关于此优化可参考[1](https://go-review.googlesource.com/c/go/+/20901/9)和[2](https://go-review.googlesource.com/c/go/+/20902)。
 
 具体汇编代码不再列出，感兴趣的同学可以自己尝试。
+ 
+对接口的构造和转换本质上是对object的type和data两个字段的操作，对空接口eface来说，只需将type和data提取并填入即可，而对于非空接口iface构造和断言，需要判断object或eface是否满足接口定义，并生成对应的itab(包含接口类型，object类型，object接口实现方法地址等信息)，每个已初始化的iface都有itab字段，该字段的生成是通过hash表优化的，以及对于每个interfacetype <-> concrettype对，只需要生成一次itab，之后从hash表中取就可以了。由于编译器知晓itab的内存布局，因此在将iface赋给eface的时候可以避免函数调用，直接将iface.itab.typ赋给eface.typ。
 
 ### 4. 类型反射
  
-类型反射无非就是将eface{}的\_type和data字段取出进行解析，针对TypeOf的实现很简单:
+#### 4.1 类型&值解析
+
+类型和值解析无非就是将eface{}的\_type和data字段取出进行解析，针对TypeOf的实现很简单:
 
 ```
 // 代码位于relect/type.go
@@ -415,34 +451,14 @@ convT2Enoptr, convT2Inoptr
 func TypeOf(i interface{}) Type {
     // emptyInterface结构体定义与eface一样，都是两个word(type和data)
     eface := *(*emptyInterface)(unsafe.Pointer(&i))
-    return toType(eface.typ)
+    return toType(eface.typ) // 将eface.typ赋给reflect.Type接口，供外部使用
 }
 
-// reflect.Type.Elem()仅对复合类型有效(Array,Ptr,Map,Chan,Slice)，取出其中的子类型
-func (t *rtype) Elem() Type {
-    switch t.Kind() {
-    case Array:
-        tt := (*arrayType)(unsafe.Pointer(t))
-        return toType(tt.elem)
-    case Chan:
-        tt := (*chanType)(unsafe.Pointer(t))
-        return toType(tt.elem)
-    case Map:
-        tt := (*mapType)(unsafe.Pointer(t))
-        // 对mapType来说，tt.elem实际上是value的类型，可通过t.Key()来获取key类型
-        return toType(tt.elem)
-    case Ptr:
-        tt := (*ptrType)(unsafe.Pointer(t))
-        return toType(tt.elem)
-    case Slice:
-        tt := (*sliceType)(unsafe.Pointer(t))
-        return toType(tt.elem)
-    }
-    panic("reflect: Elem of invalid type")
-}
+ 
 ```
-
-reflect.ValueOf则要复杂一些，因为它需要根据type来决定数据应该如何被解释，因此实际上reflect.Value也包含类型信息，并且通过一个flag字段来标识只读属性，是否为指针等。
+要知道，对于复合类型，如Ptr, Slice, Chan, Map等，它们的type信息中包含其子类型的信息，如Slice元素类型，而其元素类型也可能是复合类型，因此type实际上是一颗"类型树"，可通过`reflect.Elem()`和`reflect.Key()`等API来获取这些子类型信息，但如果如果type不匹配(比如`reflect.TypeOf([]int{1,2}).Key()`)，会panic。
+ 
+`reflect.ValueOf()`则要复杂一些，因为它需要根据type来决定数据应该如何被解释:
 
 ```
 type Value struct {
@@ -479,7 +495,7 @@ func unpackEface(i interface{}) Value {
     }
     return Value{t, e.word, f}
 }
-
+ 
 // 将数据由reflect.Value打包为interface{}
 func packEface(v Value) interface{} {
     t := v.typ
@@ -506,45 +522,109 @@ func packEface(v Value) interface{} {
 
     e.typ = t
     return i
-
-// reflect.Value的Elem()方法仅对引用类型(Ptr和Interface{})有效，返回其引用的值
-func (v Value) Elem() Value {
-    k := v.kind()
-    switch k {
-    case Interface:
-        var eface interface{}
-        if v.typ.NumMethod() == 0 {
-            eface = *(*interface{})(v.ptr)
-        } else {
-            eface = (interface{})(*(*interface {
-                M()
-            })(v.ptr))
-        }
-        x := unpackEface(eface)
-        if x.flag != 0 {
-            x.flag |= v.flag & flagRO
-        }
-        return x
-    case Ptr:
-        ptr := v.ptr
-        if v.flag&flagIndir != 0 {
-            ptr = *(*unsafe.Pointer)(ptr)
-        }
-        // The returned value's address is v's value.
-        if ptr == nil {
-            return Value{}
-        }
-        tt := (*ptrType)(unsafe.Pointer(v.typ))
-        typ := tt.elem
-        fl := v.flag&flagRO | flagIndir | flagAddr
-        fl |= flag(typ.Kind())
-        return Value{typ, ptr, fl}
-    }
-    panic(&ValueError{"reflect.Value.Elem", v.kind()})
+}
+ 
+// 将reflect.Value转换为interface{}，相当于reflect.ValueOf的逆操作
+// 等价于: var i interface{} = (v's underlying value)
+func (v Value) Interface() (i interface{}) {
+   return valueInterface(v, true)
 }
 
+func valueInterface(v Value, safe bool) interface{} {
+   if v.flag == 0 {
+      panic(&ValueError{"reflect.Value.Interface", 0})
+   }
+   if safe && v.flag&flagRO != 0 {
+      panic("reflect.Value.Interface: cannot return value obtained from unexported field or method")
+   }
+   if v.flag&flagMethod != 0 {
+      v = makeMethodValue("Interface", v)
+   }
+   // 当interface{}作为子类型时，会产生类型为Interface的Value
+   // 如 reflect.TypeOf(m).Elem().Kind() == Interface
+   if v.kind() == Interface {
+      if v.NumMethod() == 0 {
+         return *(*interface{})(v.ptr)
+      }
+      return *(*interface {
+         M()
+      })(v.ptr)
+   }
+   return packEface(v)
+}
+ 
 ```
 
+和`reflect.Type.Elem()`一样，`reflect.Value`也提供一系列的方法进行值解析，如`Elem()`可以得到Interface或Ptr指向的值，`Index()`可以得到Array, Slice或String对应下标的元素等。但在使用这些API前要先通过`reflect.Type.Kind()`确认类型匹配，否则会panic。
+ 
+#### 4.2 类型反射
+ 
+ 
+类型&值解析实际上对将interface{}的type和data提出来，以`reflect.Type`和`reflect.Value`接口暴露给用户使用，而类型反射是指提供一个reflect.Type，我们可以创建一个对应类型的对象，这可以通过`reflect.New()`来完成：
+ 
+```go
+// reflect/value.go
+// New returns a Value representing a pointer to a new zero value
+// for the specified type. That is, the returned Value's Type is PtrTo(typ).
+func New(typ Type) Value {
+   if typ == nil {
+      panic("reflect: New(nil)")
+   }
+   ptr := unsafe_New(typ.(*rtype))
+   fl := flag(Ptr)
+   return Value{typ.common().ptrTo(), ptr, fl}
+}
+ 
+ 
+// runtime/malloc.go
+func newobject(typ *_type) unsafe.Pointer {
+   return mallocgc(typ.size, typ, true)
+}
+
+//go:linkname reflect_unsafe_New reflect.unsafe_New
+func reflect_unsafe_New(typ *_type) unsafe.Pointer {
+   return newobject(typ)
+}
+```
+ 
+PS: Go的包管理看来还是不够好用，为了达成reflect包和runtime包的"解耦"，先后使用和copy struct define和link method "黑科技"。
+ 
+`reflect.New()`创建对应Type的对象并返回其指针，以下是一个简单的示例:
+ 
+```
+type User struct {
+   UserId     int
+   Name   string
+}
+
+func main() {
+   x := User{UserId: 111}
+   typ := reflect.TypeOf(x)
+   // reflect.New返回的是*User 而不是User
+   y := reflect.New(typ).Elem()
+   for i:=0; i<typ.NumField(); i++ {
+      // 根据每个struct field的type 设置其值
+      fieldT := typ.Field(i) 
+      fieldV := y.Field(i)
+      kind := fieldT.Type.Kind()
+      if kind == reflect.Int{
+         fieldV.SetInt(123)
+      } else if kind == reflect.String{
+         fieldV.SetString("wudaijun")
+      }
+   }
+   fmt.Println(y.Interface())
+}
+```
+ 
+以上代码稍改一下，即可实现简单CSV解析：根据提供的struct原型，分析其字段，并一一映射到csv每一列，将csv读出的string转换为对应的struct field type，对于简单类型使用strconv即可完成，对于复合数据结构如Map, Slice，可使用json库来定义和解析。
+ 
+ 
+`reflect.New()`和`reflect.Zero()`可用于创建Type对应的对象，除此之外，reflect包还提供了`reflect.MapOf()`, `reflect.SliceOf()`等方法用于基于现有类型创建复合类型。具体源码不再列出，参考reflect/type.go和reflect/value.go。
+ 
+ 
+reflect提供的反射能力不可谓不强大，但在实际使用中仍然不够好用，一个因为Go本质上是静态类型语言，要提供"动态类型"的部分语义是比较复杂和不易用的，这有点像C++提供泛型编程，虽然强大，但也是把双刃剑。
+ 
 参考:
 
 1. [Golang汇编快速指南](https://studygolang.com/articles/2917)
