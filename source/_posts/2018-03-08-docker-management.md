@@ -39,7 +39,7 @@ Docker Swarm是docker原生的集群管理工具，之前是个独立的项目�
 - docker node: 提供对机器节点的管理
 - docker swarm: 用于配置机器集群，包括管理manager和worker两类机器节点的增删
 
-### 1. 初始化 swarm
+#### 1. 初始化 swarm
 
     [n1-common]> docker swarm init
     Swarm initialized: current node (b3a3avned864im04d7veyw06t) is now a manager.

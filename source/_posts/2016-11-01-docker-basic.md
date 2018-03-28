@@ -166,6 +166,20 @@ CMD和ENTRYPOINT的区别：CMD和ENTRYPOINT都可用于设置容器执行入口
 
 ENTRYPOINT，CMD，RUN在定义时，均推荐使用Json数组方式。参见[Dockerfile Best Practices][]
 
+#### Exec和Shell区别
+
+前面提到的RUN, CMD, ENTRYPOINT都有两种定义方式: 
+
+	# Exec定义 相当于直接执行: /bin/echo hello
+	ENTRYPOINT 	echo hello
+	# Shell定义 相当于执行: /bin/sh -c "echo hello"
+	ENTRYPOINT 	["echo", "hello"]
+	
+
+这两者除了前面所描述的使用方法的不同之外，本质上的区别是前者(Exec)的容器主进程(Pid=1)为命令本身，而后者(Shell)的容器主进程为/bin/sh，这会导致容器接收信号的进程不同，如`docker stop`与`docker kill`会向容器发送SIGTERM和SIGKILL信号，如果使用Shell方式启动命令，命令作为主进程/bin/sh的子进程将不能正确接收到信号。
+
+因此，统一使用Exec是最佳实践，将容器看做一个进程，这个进程即为应用本身。
+
 #### 其它命令
 
     ENV: 定义环境变量，该变量可被后续其它指令引用，并且在生成的容器中同样有效
