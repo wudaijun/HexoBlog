@@ -84,6 +84,8 @@ go run编译(通过go build)并运行命令源码文件(main package)，查看�
 
 ### go test
 
+#### 1. 单元测试
+
 `go test`编译指定包或源文件，并执行所在包对应的测试用例。一个符合规范的测试文件指：
 
 - 文件名必须是_test.go结尾的，这样在执行go test的时候才会执行到相应的代码
@@ -96,5 +98,33 @@ go run编译(通过go build)并运行命令源码文件(main package)，查看�
 
 测试分为包内测试和包外测试，即测试源码文件可于被测试源码文件位于同一个包(目录)，或者测试源码文件声明的包名可以是被测试包名+"_test"后缀。
 
-另外，可以用一些插件来辅助编写测试用例，如[gotest](https://github.com/cweill/gotests/)(支持sublime, emacs, vim)。
+#### 2. 基准测试
+
+基准测试也就是跑分测试，写法和单元测试差不多，只不过函数签名为`BenchmarkXxx(b *testing.B)`，函数内通过 b.N 作为迭代次数，go test会自动调整这个值，得到合适的测试次数，然后算出每次迭代消耗的时间。
+
+#### 3. 执行测试
+
+	# 执行当前目录所在包的单元测试
+	go test . 
+	# 执行当前目录所在包的单元测试和基准测试(-bench 后面接正则匹配，'.'通配所有 Benchmark)
+	go test -bench . . 
+	# 执行当前目录所在包的 TestAbc 单元测试以及 BenchmarkAbc 基准测试
+	go test -run TestAbc -bench BenchmarkAbc . 
+	
+	# 在当前目录生成 battle.test 二进制文件而不执行，支持 go build 的所有参数。如可通过 -o 参数指定输出文件
+	go test -c ngs/battle 
+	# 直接执行 test 二进制时，test flag 需要加上 'test.' 前缀
+	./battle.test -test.bench . 
+	
+	# 以下两条命令等价 并且实际上，编译器也是分为这两步来做的
+	go test -bench . -cpuprofile cpu.prof .
+	go test -c -o my.test . && my.test -test.bench . -test.cpuprofile cpu.prof
+	
+	# 如果要在 go test 时传入无需编译器加 'test.' 前缀的 flag，可将 flag 放在 -args 选项后:
+	go test -v -args -x -v
+	# 等价于:
+	pkg.test -test.v -x -v
+	
+	
+
 
