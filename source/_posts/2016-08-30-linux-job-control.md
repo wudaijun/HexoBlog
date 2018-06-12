@@ -22,11 +22,12 @@ tags:
 <!--more-->
 
 例如，打开Bash，输入：
-          proc1 | proc2 &          proc3 | proc4 | proc5
+          proc1 | proc2 &
+          proc3 | proc4 | proc5
        
 进程关系如下图所示：
  
-![](/assets/image/linux/linux-session-process.png  "进程组，会话和控制终端")
+![](/assets/image/201608/linux-session-process.png  "进程组，会话和控制终端")
 
 ### 作业控制信号
 

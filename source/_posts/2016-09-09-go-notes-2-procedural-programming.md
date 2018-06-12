@@ -12,7 +12,8 @@ layout: post
 
 	// 语法糖 相当于 func myfunc(args []interface{})
 	func myfunc(args ...interface{}){
-		for _, arg := range args {        fmt.Println(arg)
+		for _, arg := range args {
+        fmt.Println(arg)
 	}
 	
 	// 参数会被打包为 []{arg1,arg2,arg3}
@@ -43,7 +44,7 @@ layout: post
 	
 多返回值的在Plan9 C编译器上的实现是由调用者在其栈上分配n和err的内存，由被调用方修改调用方栈上的n和err的值：
 
-![](/assets/image/go/go-func-call.png "")
+![](/assets/image/201609/go-func-call.png "")
 	
 ## 匿名函数&闭包
 

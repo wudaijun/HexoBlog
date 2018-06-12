@@ -13,7 +13,7 @@ React实际上只是View层的一套解决方案，它将View层组件化，并�
 
 目前大部分的前端框架(Angular, Vue)都支持双向绑定(MVVM)技术，其中M(Model)指数据层，V(View)指视图层，所谓双向绑定是指Model层发生变化(比如服务器数据更新)，导致对应View层更新，View层产生用户交互，也会反映到Model层。这种机制看起来方便，但在实际应用中，一个Model更新可能导致多个View和Model连锁更新(Cascading Update)。Model可以更新Model，Model可以更新View，View可以更新Model，开发者很难完全掌控数据流，比如到了后期完全不知道View的变化是由那个局部变更导致的。整个关系图看起来像是这样:
 
-![](/assets/image/react/mvvm.png)
+![](/assets/image/201805/mvvm.png)
 
  Flux为此给出了单向数据流的解决方案，React的单向数据流指的是View层内部的自顶向下的数据流，这里指的整个Web App 的单向数据流，在Flux中，主要有四个部分:
  
@@ -24,7 +24,7 @@ React实际上只是View层的一套解决方案，它将View层组件化，并�
  
 Flux通过加入Dispatcher和Action避免了Model对View的依赖，形成单向数据流:
 
-![](/assets/image/react/react-one-way-dataflow.png)
+![](/assets/image/201805/react-one-way-dataflow.png)
 
 假设我们有个Todo应用，在Flux中，一个典型的交互流程如下:
 

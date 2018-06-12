@@ -24,7 +24,7 @@ Animator有个比较有用的选项，用于通过脚本而不是动画来控制
 
 Apply Root Motion的作用示例：
 
-![](/assets/image/unity/apply_root_motion_demo.gif "")
+![](/assets/image/201510/apply_root_motion_demo.gif "")
 
 当取消`Apply Root Motion`时，动画的转向和移动都将被屏蔽，只显示动画本身的动作。`Apply Root Motion`在一些场合下很有用，比如当模型自己有AI：
 

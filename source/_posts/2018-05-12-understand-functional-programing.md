@@ -225,7 +225,7 @@ Monad 的概念被引入到 Haskell，表示"注入"和"提取"的概念，用�
 
 Haskell严格地把纯代码从那些有副作用的代码(如 IO)中分隔开。就是说，它给纯代码提供了完全的副作用隔离。除了帮助程序员推断他们自己代码的正确性，它还使编译器可以自动采取优化和并行化成为可能。而 Monad 加上 Haskell 的类型类即成为分离纯函数和副作用函数的利器:
 
-![](/assets/image/haskell-monad.png)
+![](/assets/image/201805/haskell-monad.png)
 
 [图片出处](http://zhuoqiang.me/what-is-monad.html)
 

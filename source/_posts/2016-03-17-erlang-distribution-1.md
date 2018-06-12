@@ -2,7 +2,9 @@
 title: Erlang 分布式系统(1)
 layout: post
 categories: erlang
-tags: erlang
+tags:
+- erlang
+- distribution
 
 ---
 ### 一. 分布式计算的八大谬论

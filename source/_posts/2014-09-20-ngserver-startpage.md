@@ -1,7 +1,8 @@
 ---
 title: NGServer 简介
 layout: post
-tag: ngserver
+tag:
+- ngserver
 categories: gameserver
 ---
 

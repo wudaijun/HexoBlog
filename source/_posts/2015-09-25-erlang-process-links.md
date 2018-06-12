@@ -36,7 +36,7 @@ categories: erlang
 	
 或者，我们可以用图片来阐述：
 
-![](/assets/image/erlang/process_link_exit.png "")
+![](/assets/image/201509/process_link_exit.png "")
 
 然后，这个`{'EXIT', B, Reason}`消息并不能被`try ... catch`捕获。我们需要通过其它机制来实现这点，我们将在后面看到。
 

@@ -379,7 +379,7 @@ PASS
 
 最后附上一份转载的sync.Map操作图解([图片出处](http://russellluo.com/2017/06/go-sync-map-diagram.html)):
 
-![](/assets/image/go/go-sync-map-diagram.png "")
+![](/assets/image/201802/go-sync-map-diagram.png "")
 
 
 

@@ -20,7 +20,7 @@ categories: erlang
 
 针对于这些问题，我们首先对集群进行了重整，将同一个server_id下的player，map，pvp，alliance等轻量的进程放在一起，由server进程统一管理，并挂载server_node之上。这样整个集群的节点只剩三个：agent，server，battle，满足了数据局部性原则，业务逻辑交互也更高效(Erlang进程之间)。mnesia集群表仍然保留，用于执行快速的消息路由和进程查找。
 
-![](/assets/image/erlang/cluster_server_server_node.png "Server Node")
+![](/assets/image/201601/cluster_server_server_node.png "Server Node")
 
 #### 2. 玩家数据同步
 

@@ -29,7 +29,7 @@ Erlang外部调用的几种方式：
 
 ### Ports
 
-![](/assets/image/erlang/Erlang_Port.png "普通端口")
+![](/assets/image/201508/Erlang_Port.png "普通端口")
 
 图一. Ports 通信模型
 
@@ -45,7 +45,7 @@ Port的优势在于隔离性和安全性，因为外部程序的任何异常都�
 ### Port Driver
 
 
-![](/assets/image/erlang/Erlang_Port_Driver.png "端口驱动")
+![](/assets/image/201508/Erlang_Port_Driver.png "端口驱动")
 
 图二. Port Driver 通信模型
 

@@ -101,13 +101,13 @@ Eshell V7.0.2  (abort with ^G)
 	
 此时L1, L2的内存布局如下：
 
-![](/assets/image/erlang/erlang_lists_sample.png "")
+![](/assets/image/201512/erlang_lists_sample.png "")
 
 ### 4. tuple
 
 tuple属于boxed对象的一种，每个boxed对象都有一个对象头(header)，boxed Eterm即指向这个header，这个header里面包含具体的boxed对象类型，如tuple的header末6位为000000，前面的位数为tuple的size：
 
-![](/assets/image/erlang/erlang_tuple_format.png "")
+![](/assets/image/201512/erlang_tuple_format.png "")
 
 tuple实际上就是一个有头部的数组，其包含的Eterm在内存中紧凑排列，tuple的操作效率和数组是一致的。
 
@@ -190,7 +190,7 @@ typedef struct erl_heap_bin {
 
 大于64字节的binary将创建在Erlang虚拟机全局堆上，称为refc binary(reference-counted binary)，可被所有Erlang进程共享，这样跨进程传输只需传输引用即可，虚拟机会对binary本身进行引用计数追踪，以便GC。refc binary需要两个部分来描述，位于全局堆的refc binary数据本身和位于进程堆的binary引用(称作proc binary)，这两种数据结构定义于global.h中。下图描述refc binary和proc binary的关系：
 
-![](/assets/image/erlang_refc_binary.png "")
+![](/assets/image/201512/erlang_refc_binary.png "")
 
 所有的OffHeap(进程堆之外的数据)被组织为一个单向链表，进程控制块(erl_process.h struct process)中的`off_heap`字段维护链表头和所有OffHeap对象的总大小，当这个大小超过虚拟机阀值时，将导致一次强制GC。注意，refc binary只是OffHeap对象的一种，以后可扩展其它种类。
 
@@ -199,7 +199,7 @@ typedef struct erl_heap_bin {
 
 sub binary是Erlang为了优化binary分割的(如`split_binary/2`)，由于Erlang变量不可变语义，拷贝分割的binary是效率比较底下的做法，Erlang通过sub binary来复用原有binary。ErlSubBin定义于`erl_binary.h`，下图描述`split_binary(ProBin, size1)`返回一个ErlSubBin二元组的过程：
 
-![](/assets/image/erlang_sub_binary.png "")
+![](/assets/image/201512/erlang_sub_binary.png "")
 
 ProBin的size可能小于refc binary的size，如上图中的size3，这是因为refc binary通常会通过预分配空间的方式进行优化。
 
@@ -248,7 +248,7 @@ binary追加实现源码位于`$BEAM_SRC/erl_bits.c erts_bs_append`，B1和B2本
 
 只有最后追加得到的sub binary才可执行快速追加(通过sub binary和对应ProBin flags来判定)，否则会拷贝并分配新的可追加refc binary。所有的sub binary都是指向ProcBin或heap binary的，不会指向sub binary本身。
 
-![](/assets/image/erlang_binary_append.png "")
+![](/assets/image/201512/erlang_binary_append.png "")
 
 #### binary降级
 

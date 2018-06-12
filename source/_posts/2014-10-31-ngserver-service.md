@@ -16,7 +16,7 @@ NGServer的核心概念便是服务(Service)，它对逻辑层表现为一个线
 ## Message定义
 NGServer中的消息定义于Message.h中，主要定义了如下几种消息，它们的继承体系如下：
 
- ![](/assets/image/ngserver/NGServer_Message_Hierarchy.png "Message继承体系")
+ ![](/assets/image/201410/NGServer_Message_Hierarchy.png "Message继承体系")
 
 Message实现对消息的最高抽象，并不包含任何数据，只提供 GetType纯虚函数接口。用于标识消息类型。
 
@@ -79,7 +79,7 @@ LoginService(登录服务) MapService(地图服务)  DBService(数据库服务) 
 
 它们的继承体系如下：
 
-![](/assets/image/ngserver/NGServer_Service_Hierarchy.png "Service继承体系")
+![](/assets/image/201410/NGServer_Service_Hierarchy.png "Service继承体系")
 
 下面简要介绍一下Service每一层实现的一些接口，以及意义：
 
@@ -88,7 +88,7 @@ LoginService(登录服务) MapService(地图服务)  DBService(数据库服务) 
 抽象服务的公共接口，如压入消息，处理消息，发送消息等，以及提供一些服务会用到的公共组件，比如定时器，当前时间，处理情况等。
 下面是一些重要接口：
 
-![](/assets/image/ngserver/NGServer_Service_ClassInterface.png "Service类接口")
+![](/assets/image/201410/NGServer_Service_ClassInterface.png "Service类接口")
 
 ### Service
 Service包含一个消息队列MessageQueue,保存待处理的消息。MessageQueue和ByteBuff类似，使用双缓冲。每个Service都包含一个_sid用于唯一标识自己。以下是一些主要接口：

@@ -19,7 +19,7 @@ Go1.1之前只有G-M模型，没有P，Dmitry Vyukov在[Scalable Go Scheduler De
 
 G-P-M模型示意图:
 
-![](/assets/image/go/go-schedule.png)
+![](/assets/image/201801/go-schedule.png)
 
 补充说明:
 

@@ -21,7 +21,7 @@ tags: docker
 
 默认网络模式，此模式下，容器有自己的独立的Network Namespace。简单来说，Docker在宿主机上虚拟了一个子网络，宿主机上所有容器均在这个子网络中获取IP，这个子网通过网桥挂在宿主机网络上。Docker通过NAT技术确保容器可与宿主机外部网络交互。
 
-![](/assets/image/tool/docker-bridge.png "")
+![](/assets/image/201711/docker-bridge.png "")
 
 Docker服务默认会创建一个docker0网桥，并为网桥指定IP和子网掩码(通常为172.17.0.1/16)。当启动bridge模式的容器时，Docker Daemon利用veth pair技术，在宿主机上创建两个虚拟网络接口设备。veth pair技术保证无论哪一个veth收到报文，都将转发给另一方。veth pair的一端默认挂在docker0网桥上，另一端添加到容器的namespace下，并重命名为eth0，保证容器独享eth0，做到网络隔离。连接在同一个Docker网桥上的容器可以通过IP相互访问。如此实现了宿主机到容器，容器与容器之间的联通性。
 
@@ -79,7 +79,7 @@ Docker服务默认会创建一个docker0网桥，并为网桥指定IP和子网�
 3. 使用[OpenvSwich网桥][]，如通过配置工具pipework，见参考4
 4. 在Docker1.9之后，可以使用原生解决方案Docker overlay
 
-![](/assets/image/tool/docker-overlay.png "")
+![](/assets/image/201711/docker-overlay.png "")
 
 [图片出处](http://tonybai.com/2016/02/15/understanding-docker-multi-host-networking/)
 
