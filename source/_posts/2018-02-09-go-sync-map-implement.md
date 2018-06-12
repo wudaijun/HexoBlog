@@ -82,6 +82,20 @@ type Value struct {
   // 实际保存的值
    v interface{}
 }
+
+// Load returns the value set by the most recent Store.
+// It returns nil if there has been no call to Store for this Value.
+func (v *Value) Load() (x interface{}) {
+	// ...
+}
+
+// Store sets the value of the Value to x.
+// All calls to Store for a given Value must use values of the same concrete type.
+// Store of an inconsistent type panics, as does Store(nil).
+func (v *Value) Store(x interface{}) {
+	// ...
+}
+
 ```
 atomic负责v的原子存取操作，我们知道interface{}对应的数据结构为eface，有两个字段: type和data，因此它不能直接通过atomic.Load/Store来存取，atomic.Value实现无锁存取的原理很简单: type字段不变，只允许更改data字段，这样就能通过`atomic.LoadPointer`来实现对data的存取。从实现来讲，atomic.Value要处理好两点:
  
