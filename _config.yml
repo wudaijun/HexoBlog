@@ -65,7 +65,7 @@ pagination_dir: page
 ## Plugins: http://hexo.io/plugins/
 ## Themes: http://hexo.io/themes/
 ## theme: light-cn
-theme: BlueLake
+theme: next
 
 archive_generator:
     per_page: 0
@@ -78,26 +78,12 @@ tag_generator:
 
 category_generator:
     per_page: 0
-    
-# local search
-jsonContent:
-  meta: false
-  pages: false
-  posts:
-    title: true
-    date: true
-    path: true
-    text: true
-    raw: false
-    content: false
-    slug: false
-    updated: false
-    comments: false
-    link: false
-    permalink: false
-    excerpt: false
-    categories: false
-    tags: true
+
+search:
+    path: search.xml
+    field: post
+    format: html
+    limit: 10000
 
 # Deployment
 ## Docs: http://hexo.io/docs/deployment.html

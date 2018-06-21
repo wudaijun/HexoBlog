@@ -22,6 +22,8 @@ tags: docker
 
 docker-machine可以用来在本机部署Docker集群，或者在云上部署Docker。docker-machine支持多种虚拟方案，virtualbox，xhyve，hyperv等等。具体使用比较简单，命令参考附录文档。
 
+<!--more-->
+
 
 ### 二. Docker Swarm
 

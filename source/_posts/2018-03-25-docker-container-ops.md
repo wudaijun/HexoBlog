@@ -9,6 +9,8 @@ tags: docker
 
 Docker资源限制主要靠Linux cgroups技术实现，简单说，cgroups是一个个的进程组(实际上是进程树)，这些进程树通过挂接 subsystem(事实上是挂接到 cgroup 上层的hierarchy)来实现对各种资源的限制和追踪，subsystem是内核附加在程序上的一系列钩子（hooks），通过程序运行时对资源的调度触发相应的钩子以达到资源追踪和限制的目的。cgroups 技术的具体介绍和实现参考文末链接。
 
+<!--more-->
+
 #### 1. CPU
 
 默认情况下，Docker容器对 CPU 资源的访问是无限制的，可使用如下参数控制容器的 CPU 访问:
