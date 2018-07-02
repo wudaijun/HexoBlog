@@ -16,6 +16,8 @@ categories: erlang
 
 atom不会被GC，这意味着我们应该对atom内存增长更加重视而不是忽略。在编写代码时，尽量避免动态生成atom，因为一旦你的输入源不可靠或受到攻击(特别针对网络消息)，atom内存增长可能导致节点crash。可以考虑将atom生成函数替换为更安全的版本：
 
+<!--more-->
+
 	list_to_atom/1 -> list_to_existing_atom/1
 	binary_to_atom/2 -> binary_to_existing_atom/2
 	binary_to_term(Bin) -> binary_to_term(Bin,[safe])

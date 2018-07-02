@@ -14,6 +14,8 @@ Actor模型，又叫参与者模型，其"一切皆参与者(actor)"的理念与
 
 在Actor模型中，actor执行体是第一类对象，每个actor都有自己的ID(类比人的身份证)，可以被传递。actor的交互通过发送消息来完成，每个actor都有一个通信信箱(mailbox，本质上是FIFO消息队列)，用于保存已经收到但尚未被处理的消息。actorA要向actorB发消息，只需持有actorB ID，发送的消息将被立即Push到actorB的消息信箱尾部，然后返回。因此Actor的通信原语是异步的。
 
+<!--more-->
+
 从actor自身来说，它的行为模式可简化为:
 
 - 发送消息给其它的actor

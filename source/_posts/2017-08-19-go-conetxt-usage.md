@@ -17,6 +17,8 @@ tags: go
 - 同步双工: 多个单向非缓冲channel
 - 异步双工: 多个单向缓冲channel
 
+<!--more-->
+
 #### 流水线
 
 流水线如其词语，goroutine是"流水线工人"，channel则为"流水线"，衔接不同的goroutine的输入输出，每个goroutine有一个输入(inbound)channel和输出(outbound)channel:
