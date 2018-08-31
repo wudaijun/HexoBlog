@@ -93,9 +93,9 @@ Buff 作用链和 Buff 事件处理的机制是一样的，只不过前者关心
 
 ### 4.Buff相互关系
 
--Buff 冲突:  即该BUFF生效时，已有的哪些Buff会失效，如一些清除负面状态的Buff
--Buff 免疫: 	即该BUFF生效时，后面来的哪些BUFF不能生效，如BKB免疫眩晕
--Buff 叠加:  两种同类增益或减益BUFF同时生效时，按照某个规则进行BUFF效果重新计算生成
+- Buff 冲突:  即该BUFF生效时，已有的哪些Buff会失效，如一些清除负面状态的Buff
+- Buff 免疫: 	即该BUFF生效时，后面来的哪些BUFF不能生效，如BKB免疫眩晕
+- Buff 叠加:  两种同类增益或减益BUFF同时生效时，按照某个规则进行BUFF效果重新计算生成
 
 Buff的冲突免疫关系实际上是Buff作用效果的一部分，但是一个可抽象和配置化的流程，在挂载Buff时统一处理。至于Buff叠加，在Buff B的Start节点中，判断是否有指定Buff A存在，如果存在，修正BuffB的效果(或移除已有BuffA)，是个特例流程，做到Buff脚本里面就行了。
 
