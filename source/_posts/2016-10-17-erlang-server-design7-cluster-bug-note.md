@@ -5,7 +5,7 @@ categories:
 - gameserver
 tags:
 - erlang
-- distribution
+- distributed
 
 ---
 ### 问题描述

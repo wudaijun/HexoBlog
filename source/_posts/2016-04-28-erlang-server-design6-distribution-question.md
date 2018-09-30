@@ -3,7 +3,7 @@ title: 开发笔记(6) Erlang服务器集群常见问题
 categories: erlang
 tags: 
 - erlang
-- distribution
+- distributed
 layout: post
 
 ---

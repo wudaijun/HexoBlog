@@ -3,7 +3,7 @@ title: 开发笔记(1) cluster server
 layout: post
 tags:
 - erlang
-- distribution
+- distributed
 categories: erlang
 
 ---

@@ -3,9 +3,8 @@ title:  Erlang 分布式系统(2)
 layout: post
 tags:
 - erlang
-- distribution
+- distributed
 categories: erlang
-
 ---
 ## 一. 分布式Erlang
 

@@ -3,7 +3,7 @@ title: 开发笔记(5) cluster_server集群优化
 layout: post
 tags:
 - erlang
-- distribution
+- distributed
 categories: erlang
 
 ---
