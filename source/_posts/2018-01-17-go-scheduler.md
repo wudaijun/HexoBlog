@@ -106,7 +106,7 @@ G-P-M模型示意图:
 
 当阻塞的G被G2唤醒(通过goready)时(比如channel可读/写)，G会尝试加入G2所在P的runnext，然后再是P Local队列和Global队列。
 
-### 系统调用
+### syscall
 
 当G被阻塞在某个系统调用上时，此时G会阻塞在`_Gsyscall`状态，M也处于block on syscall状态，此时仍然可被抢占调度: 执行该G的M会与P解绑，而P则尝试与其它idle的M绑定，继续执行其它G。如果没有其它idle的M，但队列中仍然有G需要执行，则创建一个新的M。
 
@@ -315,12 +315,17 @@ G结构体会复用，对可复用的G管理类似于待运行的G管理，也�
    
  GODEBUG还可使用`GODEBUG="schedtrace=1000,scheddetail=1"`选项来查看每个G,P,M的调度状态，打出的信息非常详尽复杂，平时应该是用不到。关于Go调试可参考Dmitry Vyukov大牛的[Debugging performance issues in Go programs](https://software.intel.com/en-us/blogs/2014/05/10/debugging-performance-issues-in-go-programs)。
 
+### 总结
+
+再回头来看，Go 为什么要使用GPM？而不是像大多数调度器一样只有两层关系GM，直接用M(OS线程)的数量来限制并发能力。我粗浅的理解是为了更好地处理syscall，当某个M陷入系统调用时，P则"抛妻弃子"，与M解绑，让阻塞的M和G等待被OS唤醒，而P则带着local queue剩下的G去找一个(或新建一个)idle的M，当阻塞的M被唤醒时，它会尝试给G找一个新的归宿(idle的P，或扔到global queue，等待被领养)。多么忧桑的故事。
+
 
 参考资料:
 
 1. [scheduler-tracing-in-go](https://www.ardanlabs.com/blog/2015/02/scheduler-tracing-in-go.html)
 2. [也谈goroutine调度器--TonyBai](http://tonybai.com/2017/06/23/an-intro-about-goroutine-scheduler/)
 3. [Go学习笔记--雨痕](https://github.com/qyuhen/book/blob/master/Go%201.5%20%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90%20%EF%BC%88%E4%B9%A6%E7%AD%BE%E7%89%88%EF%BC%89.pdf)
+4. [Head First of Golang Scheduler](https://zhuanlan.zhihu.com/p/42057783)
 
     
     
