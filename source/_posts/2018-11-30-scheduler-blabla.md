@@ -1,5 +1,5 @@
 ---
-title: 调度杂谈
+title: 再谈调度
 layout: post
 categories: os
 tags:

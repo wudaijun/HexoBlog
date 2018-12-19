@@ -244,10 +244,11 @@ G结构体会复用，对可复用的G管理类似于待运行的G管理，也�
 
 ### G的几种暂停方式:
 
-1. goched: 将当前的G暂停，保存堆栈状态，以Runnable状态放入Global队列中，让当前M继续执行其它任务。无需对G进行唤醒操作，因为总会有M从Global队列取得并执行该M。抢占调度即使用该方式。
+1. gosched: 将当前的G暂停，保存堆栈状态，以`_GRunnable`状态放入Global队列中，让当前M继续执行其它任务。无需对G进行唤醒操作，因为总会有M从Global队列取得并执行该G。抢占调度即使用该方式。
 2. gopark: 与goched的最大区别在于gopark没有将G放回执行队列，而是位于某个等待队列中(如channel的waitq，此时G状态为`_Gwaitting`)，因此G必须被手动唤醒(通过goready)，否则会丢失任务。应用层阻塞通常使用这种方式。
-3. notesleep: 既不让出M，也不让G重回任务队列，直接让线程休眠直到被唤醒，该方式更快，通常用于gcMark，stopm这类自旋场景
-4. goexit: 立即终止G任务，不管其处于调用堆栈的哪个层次，在终止前，确保所有defer正确执行。
+3. notesleep: 既不让出M，也不让G和P重新调度，直接让线程休眠直到被唤醒(notewakeup)，该方式更快，通常用于gcMark，stopm这类自旋场景
+4. notesleepg: 阻塞G和M，放飞P，P可以和其它M绑定继续执行，比如可能阻塞的系统调用会主动调用entersyscallblock，则会触发 notesleepg
+5. goexit: 立即终止G任务，不管其处于调用堆栈的哪个层次，在终止前，确保所有defer正确执行。
 
 ### Go调度器的查看方法
 
@@ -320,7 +321,7 @@ G结构体会复用，对可复用的G管理类似于待运行的G管理，也�
 再回头来看，Go 为什么要使用GPM？而不是像大多数调度器一样只有两层关系GM，直接用M(OS线程)的数量来限制并发能力。我粗浅的理解是为了更好地处理syscall，当某个M陷入系统调用时，P则"抛妻弃子"，与M解绑，让阻塞的M和G等待被OS唤醒，而P则带着local queue剩下的G去找一个(或新建一个)idle的M，当阻塞的M被唤醒时，它会尝试给G找一个新的归宿(idle的P，或扔到global queue，等待被领养)。多么忧桑的故事。
 
 
-参考资料:
+相关资料:
 
 1. [scheduler-tracing-in-go](https://www.ardanlabs.com/blog/2015/02/scheduler-tracing-in-go.html)
 2. [也谈goroutine调度器--TonyBai](http://tonybai.com/2017/06/23/an-intro-about-goroutine-scheduler/)
