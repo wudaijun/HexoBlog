@@ -52,7 +52,7 @@ So，现代OS的操作系统是取两者折中，即组相连结构: 将若干Ca
 
 ![](/assets/image/201904/cache-geometry.png)
 
-通用的Cache映射策略，将目标地址分为t(标记位)，s(组索引)，b(块偏移)三个部分。
+通用的Cache映射策略，将目标地址分为t(标记位)，s(组索引)，b(块偏移)三个部分。我在[Linux Perf 简单试用](http://wudaijun.com/2019/04/linux-perf/)中也有例子说明程序局部性对效率的影响。
 
 ### Cache Coherency
 
