@@ -1,5 +1,5 @@
 ---
-title: go module 来了
+title: go mod 依赖管理
 layout: post
 categories: go
 tags: go
