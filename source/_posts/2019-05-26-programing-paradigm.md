@@ -122,7 +122,7 @@ class MyRange
 end
 ```
 
-包含Enumerable的class只需要实现each方法，即可调用`MyRange.new(4,8).inject {|x,y| x+y}`，`MyRange.new(5,12).count {|i| i.odd?}`等方法。mixins通过更像组合(i can)而不是继承(i am)的方式来处理需要多重继承的情形。在方法查找(lookup)规则中，mixins由于subclass，后包含的module由于先包含的。
+包含Enumerable的class只需要实现each方法，即可调用`MyRange.new(4,8).inject {|x,y| x+y}`，`MyRange.new(5,12).count {|i| i.odd?}`等方法。mixins通过更像组合(i can)而不是继承(i am)的方式来处理需要多重继承的情形。在方法查找(lookup)规则中，mixins优于subclass，后包含的module优于先包含的。
 
 很多文章说mixins有多重继承的优点，同时也规避了多重继承的问题，我认为mixins的好处非常有限:
 
@@ -137,16 +137,16 @@ end
 聊完动态OOP语言，再来看看静态OOP语言，我们先抛开OOP，静态语言中所有的数据结构，函数参数/返回值都有静态类型，为了阐述方便，我们用伪代码表示某种虚拟的静态语言，它的描述格式为:
 
 ```
-// distToOrigin的参数为两个字段x(类型为double)和y(类型为double)的record(或者叫struct)
-fun distToOrigin (p:{x:double,y:double}) double ->
+// distFromOrigin的参数为两个字段x(类型为double)和y(类型为double)的record(或者叫struct)
+fun distFromOrigin (p:{x:double,y:double}) double ->
     Math.sqrt(p.x*p.x + p.y*p.y)
 
 // 通过val声明变量pythag类型并赋值
 val pythag : {x:double,y:double} = {x=3.0, y=4.0}
-// 调用函数并接收返回值，由于pythag与distToOrigin的参数类型一致，因此静态类型检查通过，函数调用成功
-val five : double = distToOrigin(pythag)
+// 调用函数并接收返回值，由于pythag与distFromOrigin的参数类型一致，因此静态类型检查通过，函数调用成功
+val five : double = distFromOrigin(pythag)
 // 调用函数失败，静态类型检查(实参类型int，形参类型{x:doule, y:double})，编译不通过
-val _ = distToOrigin(2)
+val _ = distFromOrigin(2)
 ```
 
 注意，在我们用于举例的语言中，record不只是数据结构的概念，它也可以包含function类型的字段，它可以推广到OOP中的Class。
@@ -158,10 +158,10 @@ val _ = distToOrigin(2)
 ```
 val cp : {x:double,y:double,color:string} = {x=3.0, y=4.0, color="red"}
 // 静态类型检查失败, {x:double,y:double,color:string} 与 {x:double,y:double} 类型不匹配
-var five : double = distToOrigin(cp)
+var five : double = distFromOrigin(cp)
 ```
 
-而事实上，我们是希望cp能够调用distToOrigin函数的，因为多color字段既不影响函数计算过程(函数需要的字段都有)，也不影响逻辑上的正确性。因此在这里，为了达成更好地代码复用，我们需要静态类型检查做一些扩展: 如果recordA去掉或交换某些字段后变为recordB，那么能用recordB的地方都应该能用recordA。在这种情况下，我们称recordA是recordB的子类型(subtype，注意和子类subclass区分)，记 B <: A。有了这个规则后，由于`{x:double,y:double,color:string}`是`{x:double,y:double}`的子类型，子类型实参可以匹配父类型形参，因此cp可使用distToOrigin函数。
+而事实上，我们是希望cp能够调用distFromOrigin函数的，因为多color字段既不影响函数计算过程(函数需要的字段都有)，也不影响逻辑上的正确性。因此在这里，为了达成更好地代码复用，我们需要静态类型检查做一些扩展: 如果recordA去掉或交换某些字段后变为recordB，那么能用recordB的地方都应该能用recordA。在这种情况下，我们称recordA是recordB的子类型(subtype，注意和子类subclass区分)，记 B <: A。有了这个规则后，由于`{x:double,y:double,color:string}`是`{x:double,y:double}`的子类型，子类型实参可以匹配父类型形参，因此cp可使用distFromOrigin函数。
 
 #### depth subtype
 
@@ -214,11 +214,11 @@ callWithOrigin的参数类型为`{x:double,y:double}->{x:double,y:double}`，现
 - `{x:double,y:double} -> {x:double}`: error, callWithOrigin可能用到f返回值中的y字段
 - `{x:double,y:double,z:double} -> {x:double,y:double}`: error, callWithOrigin传给f的参数不包含z字段，那么f执行过程就会出错
 - `{x:double} -> {x:double,y:double}`: ok, callWithOrigin传给f函数的参数包括x,y字段，只是f函数只用到了x，f函数可以正常执行
-- `{x:double} -> {x:double,y:double,z:double}`: ok，由前面的分析可知，实参函数参数字段不能多，返回值字段不能少。
+- `{x:double} -> {x:double,y:double,z:double}`: ok，由前面的分析可知，实参函数(即subtype function)参数字段不能多，返回值字段不能少。
 
 因此，有如下结论，对于 t3 <: t1 并且 t2 <: t4, 有 t1->t2 <: t3->t4。
 
-#### subtype for OOP
+#### subtype vs subclass
 
 我们在讨论Ruby时用的subclass(子类)，而在讨论静态OOP语言时用的是subtype(子类型)，因为它们本质上不是一个东西:
 
@@ -244,49 +244,27 @@ subtype不一定要通过subclass来实现，理论上你可以有两个完全�
 这里我们进一步讨论静态OOP语言中的dynamic dispatch和this指针，以C++为例:
 
 ```
-class Point {
-public:
-    double x, y;
-public:
-    Point(double x, double y) {
-        this->x = x;
-        this->y = y;
-    }
-};
-
-class ColorPoint: public Point {
-public:
-    string color;
-public:
-    ColorPoint(double x, double y, string color) : Point(x, y) {
-        this->color = color;
-    }
-};
+class Point {}; // include double x, y field
+class ColorPoint: public Point {...}; // adds string color field
 
 class B {
 public:
-    virtual void showX(Point* cp) {
-        cout << "B showX: " << cp->x << endl;
-    }
+    virtual void showX(Point* p) { cout << "B showX: " << p->x << endl; }
 };
 
 class D: public B {
 public:
-    virtual void showX(Point* p) {
-        cout << "D showX: " << p->x << endl;
-    }
+    virtual void showX(Point* p) { cout << "D showX: " << p->x << endl; }
 };
 
 int main(void){
      Point* p = new Point(1.0,2.0);
      ColorPoint* cp =  new ColorPoint(3.0,4.0,"red");
-     B* b = new B();
      D* d = new D();
-     b->showX(cp);  // B showX: 3 原生调用，不涉及subtype转换
      d->showX(p);   // D showX: 1  原生调用，不涉及subtype转换
      d->showX(cp);  // D showX: 3  ColorPoint作为Point的subtype，可以替换Point参数
-     B* b2 = d;     // 将subtype D对象显式转换为supertype B
-     b2->showX(cp); // D showX: 3, dynamic dispath，在通过subtype D调用supertype B的方法时，会动态查找并调用d->showX方法
+     B* b = d;      // 将subtype D对象转换为supertype B
+     b->showX(cp);  // D showX: 3, dynamic dispath，以对象实际类型(D*)而不是当前类型(B*)来查找方法实现
 }
 ```
 
@@ -296,9 +274,17 @@ int main(void){
 2. C++中的dynamic dispatch不是默认开启的，而是通过为指定方法`virtual`关键字手动开启的
 3. 对象d上调用showX(声明为virtual)方法，总能找到其对应类D的showX实现，而不管d是否被转换为supertype B\*
 
-现在来考虑一个问题，如果D的showX函数声明为`virtual void showX(Point* p)`，实现不变，那么`b2->showX(cp)`会输出什么？答案是`B showX: 3`。熟悉C++的同学会知道这是因为C++支持重载，编译认识的函数符号是如`_showX_Point_`这种编码了参数类型的，修改函数参数类型后，将被编译器认为是另一个函数，而非override。但有一门不支持重载的静态OOP语言L，这个修改能够正常的dynamic dispatch吗？我的理解是可以的，传递给`B:showX`的ColorPoint总能被`D:showX`正确(非逻辑层面，而是type check层面)使用，这是因为静态OOP语言中的对象不能修改方法(方法属于类)，只能修改字段，也就是在前面说的depth subtype中，舍弃了field setter。而前面举例的array，是很难丢掉field setter的。
+现在来考虑一个问题，如果B的showX函数声明为`virtual void showX(ColorPoint* p)`，实现不变，那么上面的`b->showX(cp)`会输出什么？答案是`B showX: 3`。熟悉C++的同学会知道这是因为C++支持重载，编译认识的函数符号是如`_showX_Point_`这种编码了参数类型的，修改函数参数类型后，将被编译器认为是另一个函数，而非override。但有一门不支持重载的静态OOP语言L，这个修改能够正常的dynamic dispatch吗？我的理解是可以的，传递给`B::showX`的ColorPoint总能被`D::showX`正确使用(`D:::showX`<:`B::showX`)，这是因为静态OOP语言中的对象不能修改方法(方法属于类)，只能修改字段，也就是在前面说的depth subtype中，舍弃了mehotd field setter，得到method field depth subtyping。
 
-最后来看看this指针，对C++有一定理解的同学通常将this指针看做类方法的一个隐藏参数，它由编译器自动传入。这种看法确实能更好地理解OOP，将类方法与普通函数统一起来。但有了subtype这个概念，再来看showX方法，B和D的showX方法类型分别为: `void showX(B* this, ColorPoint* cp)` 以及 `void showX(D* this, Point* p)`，这里就出现一个很奇怪的现象，D的showX不再是B的showX的subtype,我只传给了showX B的对象，但可能调用到D的showX(需要D对象，而D对象包含比B对象更多的字段，可能引发未定义错误)。这是因为this参数是特殊处理的，虽然传给showX的实参只是B对象的地址，但它同时也是D对象的地址，编译器会透明地完成这层转换，保证D的showX拿到的是正确的D对象。这也是为什么多态要在指针下才能生效的原因(值拷贝只会拷贝值的静态类型对应内容，不会拷贝后面多余的派生类数据)。
+然后来看看this指针，对C++有一定理解的同学通常将this指针看做类方法的一个隐藏参数，它由编译器自动传入。这种看法确实能更好地理解OOP，将类方法与普通函数统一起来。但有了subtype这个概念，再来看showX方法，B和D的showX方法类型分别为: `void showX(B* this, Point* p)` 以及 `void showX(D* this, Point* p)`，这里就出现一个很奇怪的现象，D的showX不再是B的showX的subtype,我只传给了showX B的对象，但可能调用到D的showX(需要D对象，而D对象包含比B对象更多的字段，可能引发未定义错误)。这是因为this参数是特殊处理的，虽然传给showX的实参只是B对象的地址，但它同时也是D对象的地址，编译器会透明地完成这层转换，保证D的showX拿到的是正确的D对象。这也是为什么多态要在指针下才能生效的原因(值拷贝只会拷贝值的静态类型对应内容，后面多余的派生类数据以及虚函数表信息会丢失)。
+
+结合C++对象内存布局来回顾一下:
+
+![](/assets/image/201905/cpp-object-model.png)
+
+1. ColorPoint对象只会基于Point对象增加字段，本身是满足subtype语义的
+2. ColorPoint向后追加新增字段，而不会变更基类对象的内存布局，这样可以让对象地址转换更轻量(不必做任何额外操作)
+3. vtable指针会在对象创建时即初始化好，不管该对象地址被转换为何种类型，vtable总是指向对象实际类型的虚函数实现(如果没实现，则指向父类该函数)
 
 #### mutiple inheritance
 
@@ -308,28 +294,39 @@ Java/C#不支持多重继承，它们的类只能有一个直接父类，但是�
 
 C++还提供纯虚函数的概念，即方法本身只包含声明，没有实现，在Java中的抽象方法也提供类似的机制，包含抽象方法或纯虚函数的类就和Ruby中的mixins很像，它既可包含声明，也可包含实现，并且不能实例化对象。当类中的所有方法都为抽象方法并且不包含任何字段时，这个类也就变成了Interface。
 
-#### generics vs subtyping
+#### generics
 
 前面我们所说的**subtyping(子类化)**，也叫做 **subtype polymorphism(子类型多态)** ，而另一种静态语言中常见的用于放宽type checker，提高灵活性和复用性的方案叫 **parametric polymorphism(参数多态)** ，也叫做**generics(泛型)** ，generics是很多静态语言都要考虑的一个特性，不只是OOP。比如ML就有强大的类型推导，可以实现很灵活的泛型编程。
 
-generics用在那些需要表述**任何类型**的地方，即不关心对象的实际类型，通常出现在容器结构中，比如你可能想要实现一个基于泛型的Stack，List，Pair等数据结构，它不关心内部元素的具体类型，它只关心和约束哪些元素类型是同一个。比如用Java通过generics实现一个Pair结构:
+generics用在那些需要表述**任何类型**的地方，即不关心对象的实际类型，通常出现在容器结构中，比如你可能想要实现一个基于泛型的Stack，List，Pair等数据结构，它不关心内部元素的具体类型，它只关心和约束哪些元素类型是同一个。比如用C++ template实现一个Pair结构:
 
-```java
-class Pair<T1,T2> {
+```c++
+template <typename T1, typename T2>
+class Pair { 
+public:
     T1 x;
     T2 y;
     Pair(T1 _x, T2 _y){ x = _x; y = _y; }
     Pair<T2,T1> swap() {
-        return new Pair<T2,T1>(y,x);
+        return Pair<T2,T1>(y,x);
     }
     T1 first() {
         return x;
     }
-    ...
-}
+};
 ```
 
-基于Pair容器本身的swap，first等操作是可复用的，这些算法与具体的元素类型无关，是在其上的更抽象的行为模式。这样我们无需单独定义PairIntString, PairPointColorPoint等类。如果使用subtype来完成:
+基于Pair容器本身的swap，first等操作是可复用的，这些算法与具体的元素类型无关，是在其上的更抽象的行为模式。这样我们无需单独定义PairIntString, PairPointColorPoint等类。
+
+C++/C#/Java等语言都提供了泛型机制，它们标准库都提供诸如`List<T>`这类通用容器，但它们的实现方式是有区别的，Java的实现方式是"类型擦除(Type Erasure)"，即在编译时将`List<T>`变为`List<Object>`，然后加上一些类型检查和类型提取转换，Java运行时没有关于泛型的任何信息，它只会看到Object(动态类型语言的思路)，这样最大的好处在于兼容性，即老的Java运行时也可以运行泛型代码，缺点是由于运行时不知道T的具体类型，因此无法对T进行诸如instanceof,new等操作。C#/C++的泛型则被称为"模板泛型"，即有运行时的支持，对使用者来说像是为每个类型T都生成了对应的ListT类，因此克服了Java这方面的缺点，是语义完整的。C++的template则更强大，它可以实现所谓的元编程，即在模板语法中可以使用分支(偏特化)，递归等特性达到图灵完全性，如你可以通过模板语法求斐波那契数列(写法和函数式语言类似)，并将运算结果或错误在编译器就吐出来，因此C++被戏称"两层语言"，一层是生成C++目标代码的函数式语言(使用模板语法)，另一层才是命令式语言(C++本身)。当然这并不是C++的初衷，这里不再展开。
+
+Go目前没有对开发者提供泛型(据说Go2.0会加入泛型)，它的代码复用主要靠interface+reflect(额外运行时type check开销)或code generator(额外的复杂度和开发成本)来实现，它们只能解决很少一部分对泛型的需求，因此Go在这方面被广为诟病，比如知乎上[Go有什么泛型的实现方法？](https://www.zhihu.com/question/62991191)的高票答案，相信大部分Gopher都深有体会:
+
+![](/assets/image/201905/go-generics.gif)
+
+#### generics vs subtyping
+
+那么有了generics后，我们还需要subtyping么？比如前面的Pair类，如果使用subtype来完成:
 
 ```java
 class LamePair {
@@ -342,51 +339,56 @@ class LamePair {
 String s = (String)(new LamePair("hi",4).y); // error caught only at run-time
 ```
 
-由于在构建LamePair时，进行了向上转换(将传入的参数转换为共同的supertype Object)，因此这里实际会有类型信息丢失，当外部想要再次获取LamePair中的元素时，就不得不进行一次向下转换(downcast)，如`(String)e`，这类转换属于run-time check，即将一部分本应在静态类型检查时暴露的错误放到了运行时，这是有悖静态类型语言的初衷的。所有的对象都属于Object，将所有的方法，字段都声明为Object，这是动态类型语言的思路。
+由于在构建LamePair时，进行了向上转换(将传入的参数转换为共同的supertype Object)，因此这里实际会有类型信息丢失，当外部想要再次获取LamePair中的元素时，就不得不进行一次向下转换(downcast)，如`(String)e`，这类转换属于run-time check，即将一部分本应在静态类型检查时暴露的错误放到了运行时，这是有悖静态类型语言的初衷的。所有的对象都属于Object，将所有的方法参数返回值都声明为Object，这是动态类型语言的思路。
 
-因此subtyping在某些场景下不能替换generics，那反过来呢，如果我们用ML的generics来实现distToOrigin2:
+因此subtyping在某些场景下不能替换generics，那反过来呢，如果我们用ML的generics来实现distFromOrigin2:
 
 ```
-fun distToOrigin2(getx,gety,v) =
+fun distFromOrigin2(getx,gety,v) =
     let
         val x = getx v
         val y = gety v
     in
         Math.sqrt (x*x + y*y)
     end
-fun distToOriginPt (p : {x:real,y:real}) =
-    distToOrigin2(fn v => #x v,
+fun distFromOriginPt (p : {x:real,y:real}) =
+    distFromOrigin2(fn v => #x v,
                 fn v => #y v,
                 p)
-fun distToOriginColorPt (p : {x:real,y:real,color:string}) =
-    distToOrigin2(fn v => #x v,
+fun distFromOriginColorPt (p : {x:real,y:real,color:string}) =
+    distFromOrigin2(fn v => #x v,
                 fn v => #y v,
                 p)
 ```
 
-可以看到，仍然是一种很蹩脚的写法，因为Point/ColorPoint本身的字段存取是可以复用的(它们调用distToOrigin2的getter/setter都是一样的)，但是generics本身对传入的类型一无所知，因此它需要一堆的getter/setter来辅助它认识这个类型。
+可以看到，仍然是一种很蹩脚的写法，因为Point/ColorPoint本身的字段存取是可以复用的(它们调用distFromOrigin2的getter/setter都是一样的)，但是generics本身对传入的类型一无所知，因此它需要一堆的getter/setter来辅助它认识这个类型。
 
 综上，subtype和generics各自有自己的适用情形，不存在绝对的优劣。subtype适用于类型之间关联性和耦合比较重，存在大量可复用的字段/方法的情况。而generics适用于类型之间没有什么关联，它对类型之外的一些操作模式(如Stack,List,Pair,Swap)等进行抽象和复用。
 
-Java/C#同时支持subtyping和泛型，因此它们支持一种将两种结合的polymorphism: **bounded generic types**，核心思想是通过subtype来限制generics可接受的类型，想要鱼和熊掌兼得。比如:
+事实上，Java/C#同时支持subtyping和generics，因此它们支持一种将两种结合的polymorphism: **bounded generic types**，核心思想是通过subtype来限制generics可接受的类型，想要鱼和熊掌兼得。比如:
 
-```
-static List<Pt> inCircle(List<Pt> pts, Pt center, double radius) {
-    List<Pt> result = new ArrayList<Pt>();
-    for(Pt pt : pts)
-        if(pt.distance(center) <= radius)
-            result.add(pt);
-        return result;
+```java
+class Bound<T extends Point> 
+{ 
+    private T objRef; 
+       
+    public Bound(T obj){ 
+        this.objRef = obj; 
+    } 
+       
+    public double doRunTest(){ 
+        return this.objRef.distFromOrigin(); 
+    } 
 }
 ```
 
-这样，通过subtype让generics本身可以调用指定类的方法(无需外部传入)，通过generics让这些基于Point类之上的算法可复用，注意，这里的`List<Pt> Pts`和`Pt[] pts`是不一样的，前者会根据Pt实际类型不同而生成不同的List，如`ColorPt[] pts`，而后者始终只能是`Pt[] pts`，generics相当于为不同的类型生成了不同的代码(实际上，C++就是这样做的)，因此这和depth subtype不一样。
+这样，通过subtype让Bound对传入的T有一定的基本认知，可以调用Point的方法(无需外部传入)，通过generics让这些基于Point类之上的算法可复用。
 
 #### oop in golang
 
 我将Go单独放到一节，因为它与我们熟知的C++/Java/C#/Ruby等OOP语言很不一样，它有一些创新的地方，用来解决那些困扰了OOP几十年的难题。
 
-如果按照我们前面给出来的OOP定义，Go是OOP语言，或者说它可以实现OOP编程范式。但是Go没有继承(`is-a`)的概念，即没有subclass的概念，如果一门OOP语言没有subclass，那么我们会考虑两个问题: 1. Go如何实现代码复用？2. Go如何实现subtype? 下面分别讨论这两个问题。
+如果按照我们前面给出来的OOP定义，Go是OOP语言，或者说它可以实现OOP编程范式。但是Go没有继承(`is-a`)的概念，即没有subclass的概念，如果一门OOP语言没有subclass，那么我们会考虑两个问题: 1. Go如何实现class代码复用？2. Go如何实现subtype? 下面分别讨论这两个问题。
 
 Go没有`is-a`的概念，它推崇[composition over inheritance principle](https://en.wikipedia.org/wiki/Composition_over_inheritance)原则，即组合胜于继承，用`has-a`替代`is-a`:
 
@@ -442,7 +444,7 @@ test2(b) // error: cannot use b (type *B) as type *A in argument to test2
 
 在Java/C#/Go中，都有Interface的概念，但Java/C#的接口实现是需要显式声明的(即类在定义时就知道自己实现了哪些接口)，但是Go的接口不需要显式声明implement，可以在运行时动态判断(实现细节参考[这里](https://wudaijun.com/2018/01/go-interface-implement/))，这个特性为程序提供了极大的灵活性。A,B并不知道自己实现了Printer接口，它在定义的时候甚至还没有出现Printer接口，或者只有个类似Ouputter之类的接口包含相同的方法，Interface将类如何定义和类如何被使用分离开，比如你只要实现了`Read(p []byte) (n int, err error)`方法，就实现了`io.Reader`接口，就可以使用`ioutil.Read/ReadAll`等lib API。
 
-总结一下，Go通过组合加编译器的一些静态查找规则来实现代码复用，通过Interface来实现subtype，而如C++/Java/C#等语言用subclass来同时提供两种功能，因此导致类关系错综复杂，甚至一度被戏称COP(Class-oriented programing)而非OOP。虽然Interface实现的subtype不如subclass实现的subtype一样强大(Interface只是方法集合，而superclass还包含字段)，但Interface的灵活性远胜于需要显式指定的superclass，并且避免了OOP继承长久以来的痛点。
+总结一下，Go通过组合加编译器的一些静态查找规则来实现代码复用，通过Interface来实现subtype，而如C++/Java/C#等语言用subclass来同时提供两种功能，因此导致类关系错综复杂，甚至一度被戏称COP(Class-oriented programing)而非OOP。虽然Interface实现的subtype不如subclass实现的subtype一样强大(Interface只是方法声明集合，而superclass还包含字段)，但Interface的灵活性远胜于需要显式指定的superclass，并且避免了OOP继承长久以来的痛点。
 
 ### dynamic type vs static type
 
