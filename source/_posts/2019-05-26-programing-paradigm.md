@@ -170,9 +170,11 @@ var five : double = distFromOrigin(cp)
 ```
 fun setToOrigin (c:{center:{x:double,y:double}, r:double}) -> 
     c.center = {x=0.0, y=0.0}
+    
 val sphere:{center:{x:double,y:double,z:double}, r:double}) = {center={x=3.0,y=4.0,z=0.0}, r=1.0}
+
 val _ = setToOrigin(sphere)
-val _ = shere.center.z
+val _ = sphere.center.z
 ```
 
 由于setToOrigin不会知道外部传入的supertype还有哪些额外字段，它对center的重置导致center\.z字段丢失了，也就破坏了函数本来的语义。因此通常来说: type checker，field setter，depth subtype只能三选二。
@@ -286,6 +288,10 @@ int main(void){
 2. ColorPoint向后追加新增字段，而不会变更基类对象的内存布局，这样可以让对象地址转换更轻量(不必做任何额外操作)
 3. vtable指针会在对象创建时即初始化好，不管该对象地址被转换为何种类型，vtable总是指向对象实际类型的虚函数实现(如果没实现，则指向父类该函数)
 
+如果我们省掉vtable这些细节，将这个对象模型扩展一下，结合function depth subtype，它应该是这样:
+
+![](/assets/image/201905/static-object-model.png)
+
 #### mutiple inheritance
 
 C++支持多重继承，为了解决多重继承的命名冲突和冗余数据的问题，它可以在subclass构造函数中指定要哪些字段用哪个superclass的。另外它提供一个叫虚继承(virtual interitance)的机制来解决菱形继承的数据冗余问题，即D继承自B,C，B,C有个共同父类A，那么C只会有一份继承自A的数据。
@@ -363,7 +369,7 @@ fun distFromOriginColorPt (p : {x:real,y:real,color:string}) =
 
 可以看到，仍然是一种很蹩脚的写法，因为Point/ColorPoint本身的字段存取是可以复用的(它们调用distFromOrigin2的getter/setter都是一样的)，但是generics本身对传入的类型一无所知，因此它需要一堆的getter/setter来辅助它认识这个类型。
 
-综上，subtype和generics各自有自己的适用情形，不存在绝对的优劣。subtype适用于类型之间关联性和耦合比较重，存在大量可复用的字段/方法的情况。而generics适用于类型之间没有什么关联，它对类型之外的一些操作模式(如Stack,List,Pair,Swap)等进行抽象和复用。
+综上，subtype和generics各自有自己的适用情形，不存在绝对的优劣。subtype是基于supertype上的操作复用。而generics基于任意类型T，对T之上的操作模式(如Stack,List,Pair,Swap等)进行抽象复用，并且可能**构造出对应的函数和类**(Java这种擦除式泛型除外)。
 
 事实上，Java/C#同时支持subtyping和generics，因此它们支持一种将两种结合的polymorphism: **bounded generic types**，核心思想是通过subtype来限制generics可接受的类型，想要鱼和熊掌兼得。比如:
 
