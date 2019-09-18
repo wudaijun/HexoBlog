@@ -166,10 +166,11 @@ func new_f3() int32 {
 
 1. 函数返回变量地址，或者将变量地址写入到超出函数栈有效域的容器(如struct,map,slice)中，刚才已经讨论过
 2. 将变量地址写入channel或sync.Pool，编译器无法获悉其它goroutine如何使用这个变量，也就无法在编译时决议变量的生命周期
-3. slice变量超过cap重新分配，栈的大小毕竟是固定和有限的
-4. 将变量地址赋给可扩容容器(如map,slice)，将会导致变量分配
-5. 将变量赋给可扩容Interface容器(k或v为Interface的map，或[]Interface)，也会导致变量逃逸
-6. 涉及到Interface的地方都有可能导致对象逃逸，`MyInterface(x).Foo(a)`将会导致x逃逸，如果a是引用语义(指针,slice,map等)，a也会分配到堆上，涉及到Interface的很多逃逸优化都很保守，比如`reflect.ValueOf(x)`会显式调用`escapes(x)`导致x逃逸。
+3. 闭包也可能导致闭包上下文逃逸
+4. slice变量超过cap重新分配时，将在堆上进行，栈的大小毕竟是固定和有限的
+5. 将变量地址赋给可扩容容器(如map,slice)，将会导致变量分配
+6. 将变量赋给可扩容Interface容器(k或v为Interface的map，或[]Interface)，也会导致变量逃逸
+7. 涉及到Interface的地方都有可能导致对象逃逸，`MyInterface(x).Foo(a)`将会导致x逃逸，如果a是引用语义(指针,slice,map等)，a也会分配到堆上，涉及到Interface的很多逃逸优化都很保守，比如`reflect.ValueOf(x)`会显式调用`escapes(x)`导致x逃逸。
 第4点和第5点单独说下，以slice和空接口为例:
 
 ```
