@@ -80,20 +80,32 @@ ss1 = *(*string)(unsafe.Pointer(&bs))
 预分配主要针对map, slice这类数据结构，当你知道它要分配多大内存时，就提前分配，一是为了避免多次内存分配，二是为了减少space grow带来的数据迁移(map evacuate or slice copy)开销。
 
 ```go
-n := 1000
+n := 10
 src := make([]int, n)
-dst := make([]int, 0, n)
-// 最慢的方式: 22666ns
+
+// 无预分配: 162 ns/op
+var dst []int
 for i:=0; i<n; i++ {
-    dst = append(dst, src[i])
+	dst = append(dst, src[i])
 }
-// 普通方式: 90.2ns
-_ = append(dst, src...)
-// 最快的方式: 2.2ns
-copy(dst, src) // 2.2ns
+
+// 预分配，32.3 ns/op，提升了5倍
+dst2 := make([]int, 0, n)
+for i:=0; i<n; i++ {
+	dst2 = append(dst2, src[i])
+}
+
+// 预分配+append...: 30.1 ns/op
+dst2 = append(dst2, src...)
+
+// 预分配+copy: 26.0 ns/op
+copy(dst2, src)
+
 ```
 
-copy是go为优化slice拷贝提供的内置函数，一并放到这里，可以看到预分配相较直接append快了200多倍。平时编码中养成预分配的习惯是有利而无害的，Go的一些代码分析工具如[prealloc](https://github.com/alexkohler/prealloc)可以帮助你检查可做的预分配优化。
+可以看到，slice预分配对性能的提升是非常大的，这里为了简单起见，以纯粹的拷贝切片为例，而对于切片拷贝，应该使用go专门为优化slice拷贝提供的内置函数copy，如果抛开分配dst2的开销，`copy(dst2, src)`的运算速度达到0.311ns，是`append(dst, src...)`的20倍左右！
+
+平时编码中养成预分配的习惯是有利而无害的，Go的一些代码分析工具如[prealloc](https://github.com/alexkohler/prealloc)可以帮助你检查可做的预分配优化。
 
 有时候预分配的大小不一定是精确的，也可能模糊的，比如要将一个数组中所有的偶数选出来，那么可以预分配1/2的容量，在不是特别好估算大小的情况下，尽可能保守分配。
 
