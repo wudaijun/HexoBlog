@@ -291,7 +291,8 @@ y.store(42, memory_order_relaxed); // D
 在这种情况下，可能出现全局执行序列为: D A B C，出现r1=r2=42的情况。`memory_order_relaxed`相当于没有加内存屏障。除了`memory_order_relaxed`外，还有:
 
 - `memory_order_acquire`: 在该原子变量的读操作前插入LoadLoad屏障，在读操作后插入LoadStore。即Load之后的所有读写操作不能重排到Load之前
-- `memory_order_release`: 在该原子变量的写操作前插入StoreStore屏障，在写操作后插入StoreLoad屏障。即Store之前的所有读写操作不能重排到Store之后
+- `memory_order_consume`: acquire限制了Load之后的所有读写操作向前重排，而consume则只限制相关联的读写操作(单线程语义内)
+- `memory_order_release`: 在该原子变量的写操作前插入LoadStore屏障，在写操作后插入StoreStore屏障。即Store之前的所有读写操作不能重排到Store之后
 - `memory_order_acq_rel`: 相当于 `memory_order_acquire` + `memory_order_release`
 - `memory_order_seq_cst`: 最强的顺序一致性，在`memory_order_acq_rel`的基础上，支持单独全序，即所有线程以同一顺序观测到该原子变量的所有修改
 
@@ -335,6 +336,8 @@ mutex_unlock(a);
 - `Strong Memory Model`: 如X86/64，强内存模型能够保证每条指令`acquire and release`语义，换句话说，它使用了LoadLoad/LoadStore/StoreStore三种内存屏障，即避免了四种乱序中的三种，仍然保留StoreLoad的重排，对于代码片段7来说，它仍然可能出现r1=r2=42的情况
 - `Sequential Consistency`: 最强的一致性，理想中的模型，在这种内存模型中，没有乱序的存在。如今很难找到一个硬件体系结构支持顺序一致性，因为它会严重限制硬件对CPU执行效率的优化(对寄存器/Cache/流水线的使用)。
 
+前面说到C++ atomic内存模型属于语言级的约束定义，它建立在处理器平台内存模型之上，如果处理器平台是SC(Sequential Consistency)的，那么语言级无论如何定义也无法将硬件改为更松散的内存模型。语言级的内存模型还有一个重要作用就是限制编译器reorder，即生成编译器屏障(fence)。因此即使处理器平台是SC的，语言层面定义为relaxed也可能因为编译器reorder导致结果不如预期。
+
 ### Summary
 
 本文比较杂乱，前面主要介绍CPU Cache结构和Cache一致性问题，引出内存屏障的概念。后面顺便简单谈了谈指令乱序和内存一致性。
@@ -349,3 +352,4 @@ mutex_unlock(a);
 2. [Memory Barriers: a Hardware View for Software Hackers](http://irl.cs.ucla.edu/~yingdi/web/paperreading/whymb.2010.06.07c.pdf)
 3. [Weak vs. Strong Memory Models](https://preshing.com/20120930/weak-vs-strong-memory-models/)
 4. [Acquire and Release Semantics](https://preshing.com/20120913/acquire-and-release-semantics/)
+5. [如何理解 C++11 的六种 memory order？](https://www.zhihu.com/question/24301047)
