@@ -5,9 +5,9 @@ categories: rust
 tags: rust
 ---
 
-之前被同事安利了很多次Rust，周末没事去[Rust官方文档](https://kaisery.github.io/trpl-zh-cn/title-page.html)学习了下，记录一些个人粗浅理解。
+之前被同事安利了很多次Rust，周末没事去[Rust官方文档](https://kaisery.github.io/trpl-zh-cn/title-page.html)学习了下，记录一些对Rust语言粗浅理解。
 
-### 一. Rust中的所有权系统
+### 一. 所有权系统
 
 要说Rust最有别于其它语言的特性，应该就是它的所有权系统了。要谈所有权系统，从GC谈起是个不错的切入点，我们众所周知的程序语言GC只要包含两种: 手动GC和自动GC，它们各有利弊，总的来说是运行时效率和开发效率之前的权衡取舍，由于现代硬件设施发展速度很快，运行时效率越来越不是问题，因此自动GC逐渐成为新语言的标配。而Rust的GC，按照我的理解，可以将其看做半自动GC，即开发者在代码中通过所有权约束来明确变量的生命周期，这样Rust在编译器就已经知道内存应该何时释放，也就不需要运行时通过复杂的[GC算法]([常见GC算法](https://wudaijun.com/2017/12/gc-study/)去解析变量的引用关系，对运行时几乎零负担，这也是Rust敢号称系统级编程语言，运行时效率叫板C/C++的底气来源。
 
@@ -90,7 +90,7 @@ fn main() {
 2. 在任意给定时间，要么只能有一个可变引用，要么只能有多个不可变引用
 3. 引用必须总是有效的 (例如函数返回一个局部变量的引用将会得到编译错误)
 
-结合上面的规则，`s.clear`需要清空string，因此它会尝试获取s的一个可变引用(函数原型为:`clear(&mut self)`)，而由于s已经有一个不可变引用word，这破坏了规则2，因此编译器会报错。Rust通过显式的引用可变性 + 编译期检查实现了类似常量指针的功能。
+结合上面的规则，`s.clear`需要清空string，因此它会尝试获取s的一个可变引用(函数原型为:`clear(&mut self)`)，而由于s已经有一个不可变引用word，这破坏了规则2，因此编译器会报错。Rust通过显式的引用可变性 + 编译期检查实现了类似常量指针的功能(但其实在Rust中真正指针是Box<T>，它是另一个独立的对象)。
 
 #### 4. 引用有效性问题
 
@@ -187,6 +187,16 @@ fn longest<'a,'b>(x: &'a str, y: &'b str) -> &'a str {
 }
 ```
 
+#### 6. 其它补丁
+
+除了前面讨论的这些特性之外，Rust还针对所有权系统提供了其它工具，用于各类上述规则无法满足的情形，这里只是列举，不再详述。
+
+1. `Box<T>`: 相当于C的`malloc`，用于允许将一个值放在堆上而不是栈上，在栈上只保留固定大小的指针字段
+2. `Rc<T>`: 非线程安全的引用计数指针，用于实现多所有权，通过`Rc::clone`即可获得一个新的指针，与被克隆指针指向同一个对象
+3. `RefCell<T>`: 能够基于不可变值修改其内部值(即RefCell字段)，它的本质是对RefCell字段的可变借用检查将**发生运行时而非编译期**
+
+总之，Rust编译器是天生保守的，它会尽全力拒绝那些可能不正确的程序，Rust确实能在编译期检查到很多大部分语言只能在运行期暴露的错误，这是Rust最迷人的地方之一。但是，与此同时，Rust编译器也可能会拒绝一些正确的程序，此时就需要如生命周期注解，`Rc<T>`等工具来辅助编译器，甚至通过`RefCell<T>`，unsafe等方案来绕过编译器检查。把**编译器做厚**，把**运行时做薄**，是Rust易用但高效，能够立足于系统级编程语言的根本。
+
 最后总结下Rust所有权系统的规则:
 
 1. Rust 中的每一个值都有一个被称为其 所有者（owner）的变量。
@@ -195,7 +205,7 @@ fn longest<'a,'b>(x: &'a str, y: &'b str) -> &'a str {
 
 Rust的所有权系统重度依赖编译器的各种检查，在使用简单和运行快速安全之下，是Rust编译器在负重前行，Rust的编译速度目前来看还不是很理想，一直在优化。但作为一名开发者，个人是很赞同这种**编译器能做的检查，就决不让开发者操心**的准则的。
 
-### 二. Rust中的FP特性
+### 二. 函数式特性
 
 我在[理解函数式编程](https://wudaijun.com/2018/05/understand-functional-programing/)中提到，现在的语言不再受限于各种编程范式的约束，而是更偏实用主义，Rust也是这样的语言，它受函数式语言的影响颇深。
 
@@ -231,7 +241,7 @@ fn main() {
 }
 ```
 
-### 三. Rust中的OOP特性
+### 三. OOP特性
 
 #### 1. Object
 
@@ -317,5 +327,114 @@ fn main() {
 
 总的来说，Rust对OOP的支持是比较完善的，舍弃了继承和字段复用，通过trait来完成代码复用和子类化，避免了OOP继承的各种坑。
 
+### 四. 泛型和元编程
 
-本文比较零散，看到哪写到哪，Rust的宏，并发编程，工程实践等高级特性待后续学习整理。
+Rust的泛型和元编程赋予语言更强大的灵活性。这里只列举个人目前学习到的一些要点。
+
+Rust泛型的一些特性:
+
+1. 模板泛型: 在编译期填充具体类型，实现单态化
+2. 支持枚举泛型: 如: `enum Option<T> { Some(T), None, }`
+3. Trait Bound: `fn notify(item: impl Summary) {...` 等价于 `fn notify<T: Summary>(item: T) {...` 等价于 `fn notify<T>(item: T) where T: Summary {...`
+4. blanket implementations: 对实现了特定 trait 的类型有条件地实现方法，如标准库为任何实现了`Display` trait的类型实现了`ToString` trait: `impl<T: Display> ToString for T {`。这意味着你实现了A trait，标准库/第三方库就可以为你实现B trait。这是trait和泛型的一种特殊结合，也是Rust trait和传统OOP不同的地方之一
+
+元编程能够生成代码的代码，如C++的模板由于其在预编译期处理，并且图灵完备，完全可以作为另一种语言来看待，它的执行结果就是另一种语言的代码。Rust的元编程通过宏来实现，宏的语法类似于这样:
+
+```rust
+#[macro_export]
+macro_rules! vec {
+    ( $( $x:expr ),* ) => {
+        {
+            let mut temp_vec = Vec::new();
+            $(
+                temp_vec.push($x);
+            )*
+            temp_vec
+        }
+    };
+}
+```
+
+这段代码能将`let v: Vec<u32> = vec![1, 2, 3];`转换成:
+
+```rust
+let mut temp_vec = Vec::new();
+temp_vec.push(1);
+temp_vec.push(2);
+temp_vec.push(3);
+temp_vec
+```
+
+由于宏编程日常开发中使用较少，这里不再展开讨论。
+
+### 五. 并发编程
+
+基于Rust本身系统级编程语言的定位，Rust标准库本身只提供对OS Thread的基础抽象，即运行时本身不实现**轻量级线程**及其调度器，以保持其运行时的精简高效。
+
+Rust的所有权系统设计之初是为了简化运行时的内存管理，解决内存安全问题，而Rust作为系统级编程语言，并发自然也是绕不过去的传统难题，起初Rust觉得这是两个独立的问题，然而随着所有权系统的完善，Rust发现**所有权系统也能解决一系列的并发安全问题**。相较于并发领域佼佼者Erlang前辈的口号"任其崩溃(let it crash)"，Rust的并发口号也是不输分毫: "无畏并发(fearless concurrency)"。下面我们来看看Rust为何如此自信，Rust支持消息交互和共享内存两种并发编程范式。
+
+#### 1. 消息交互
+
+Rust消息交互CSP模型，但也与Go这类CSP语言有一些区别。
+
+```rust
+fn main() {
+    let (tx, rx) = mpsc::channel();
+    let val = String::from("hi");
+    thread::spawn(move || {
+        tx.send(val).unwrap();
+        
+    });
+    let received = rx.recv().unwrap();
+    println!("Got: {}", received);
+}
+```
+
+这个小小的例子有如下需要关注的细节:
+
+1. Rust 在创建 channel 时无需指定其大小，因为Rust Channel的大小是没有限制的，并且明确区分发送端和接收端，对channel的写入是永远不会阻塞的。
+2. Rust 在创建 channel 时也无需指定其类型，这是因为 tx 和 rx 是泛型对象，编译器会根据其实际发送的数据类型来实例化泛型(如这里的`std::sync::mpsc::Sender<std::string::String>`)，如果尝试对同一个 channel 发送不同类型，如果代码中没有调用`tx.send`函数都将会导致编译错误。
+3. Rust编译器本身会尝试推测闭包以何种方式捕获外部变量，但通常是保守的借用。这里 move 关键字强制闭包获取其使用的环境值的所有权，因此main函数在创建线程后对val和tx的任何访问都会导致编译错误
+4. `tx.send`本身是转移语义，即会转移val变量的控制权，因此在新创建线程在`tx.send(val)`之后对val的任何访问也会导致编译错误
+
+上面的3,4其实就是我们在并发编程常犯的错误：对相同变量的非并发安全访问，由于闭包的存在，使得这类"犯罪"的成本异常低廉。而Rust的所有权系统则巧妙地在编译器就发现了这类错误，因为变量所有权只会同时在一个线程中，也就避免了有意无意的变量共享(哪怕只读)。
+
+#### 2. 共享内存
+
+受Rust所有权系统的影响，Rust中的内存共享初看起来有点繁杂:
+
+```rust
+use std::sync::{Mutex, Arc};
+use std::thread;
+
+fn main() {
+    let counter = Arc::new(Mutex::new(0));
+    let mut handles = vec![];
+
+    for _ in 0..10 {
+        let counter = Arc::clone(&counter);
+        let handle = thread::spawn(move || {
+            let mut num = counter.lock().unwrap();
+
+            *num += 1;
+        });
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    println!("Result: {}", *counter.lock().unwrap());
+}
+```
+
+同样，这里面也有一些细节:
+
+1. 和channel一样，`Mutex<T>`也是泛型的，并且只能通过`lock`才能得到其中的`T`值，确保不会忘记加锁
+2. Mutex会在脱离作用域时，会自动释放锁，确保不会忘记释放锁
+3. 这里有多个线程需要共享Mutex的所有权，因此需要用到并发安全的引用计数智能指针`Arc<T>`(`RC<T>`不是线程安全的)
+
+### 六 体会
+
+本文比较散乱，主要从编程范式的角度理解Rust，总的来说，这门语言给我的感觉还是挺好的，既有强于其它静态语言的安全性，又想尽办法让编写Rust像动态语言一样方便简洁，这中间Rust编译器功不可没。所有权的概念让Rust在编程语言中独树一帜，可能要多适应下，这种特性让我想起了Erlang中的变量不可变，为代码分析和并发安全提供了很多便利，所有权系统本质上也是一种不变性约束，即**一个值的所有权只能属于一个变量**，这让编译器可以检查一些隐藏的代码错误，并且保持高效的运行时(对比golang的`-race`竞态检查要让运行时多占几倍CPU内存，并且运行时还要帮开发者检查并发的map访问)。准备有机会找个合适的场景用Rust实践下，增强理解。
