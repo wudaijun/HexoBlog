@@ -304,27 +304,28 @@ C++还提供纯虚函数的概念，即方法本身只包含声明，没有实�
 
 前面我们所说的**subtyping(子类化)**，也叫做 **subtype polymorphism(子类型多态)** ，而另一种静态语言中常见的用于放宽type checker，提高灵活性和复用性的方案叫 **parametric polymorphism(参数多态)** ，也叫做**generics(泛型)** ，generics是很多静态语言都要考虑的一个特性，不只是OOP。比如ML就有强大的类型推导，可以实现很灵活的泛型编程。
 
-generics用在那些需要表述**任何类型**的地方，即不关心对象的实际类型，通常出现在容器结构中，比如你可能想要实现一个基于泛型的Stack，List，Pair等数据结构，它不关心内部元素的具体类型，它只关心和约束哪些元素类型是同一个。比如用C++ template实现一个Pair结构:
+generics用在那些需要表述**任何类型**的地方，即不关心对象的实际类型，通常出现在容器结构和通用算法中，比如大名鼎鼎的C++ STL，它其实就是对泛型的极致运用，封装了各类常用的容器以及各种常用算法，比如如下是一个 STL 中的 reduce 实现:
 
 ```c++
-template <typename T1, typename T2>
-class Pair { 
-public:
-    T1 x;
-    T2 y;
-    Pair(T1 _x, T2 _y){ x = _x; y = _y; }
-    Pair<T2,T1> swap() {
-        return Pair<T2,T1>(y,x);
+template<class InputIt, class T, class BinaryOperation>
+constexpr // since C++20
+T accumulate(InputIt first, InputIt last, T init, BinaryOperation op)
+{
+    for (; first != last; ++first) {
+        init = op(std::move(init), *first); // std::move since C++20
     }
-    T1 first() {
-        return x;
-    }
-};
+    return init;
+}
 ```
 
-基于Pair容器本身的swap，first等操作是可复用的，这些算法与具体的元素类型无关，是在其上的更抽象的行为模式。这样我们无需单独定义PairIntString, PairPointColorPoint等类。
+这几行代码充分展示了STL的一些基础特性:
 
-C++/C#/Java等语言都提供了泛型机制，它们标准库都提供诸如`List<T>`这类通用容器，但它们的实现方式是有区别的，Java的实现方式是"类型擦除(Type Erasure)"，即在编译时将`List<T>`变为`List<Object>`，然后加上一些类型检查和类型提取转换，Java运行时没有关于泛型的任何信息，它只会看到Object(动态类型语言的思路)，这样最大的好处在于兼容性，即老的Java运行时也可以运行泛型代码，缺点是由于运行时不知道T的具体类型，因此无法对T进行诸如instanceof,new等操作。C#/C++的泛型则被称为"模板泛型"，即有运行时的支持，对使用者来说像是为每个类型T都生成了对应的ListT类，因此克服了Java这方面的缺点，是语义完整的。C++的template则更强大，它可以实现所谓的元编程，即在模板语法中可以使用分支(偏特化)，递归等特性达到图灵完全性，如你可以通过模板语法求斐波那契数列(写法和函数式语言类似)，并将运算结果或错误在编译器就吐出来，因此C++被戏称"两层语言"，一层是生成C++目标代码的函数式语言(使用模板语法)，另一层才是命令式语言(C++本身)。当然这并不是C++的初衷，这里不再展开。
+1. 通过迭代器抽象对容器元素的基本操作: 借鉴于函数式编程，上例的`InputIt`提供元素类型`T`的容器的操作(`++`,`!=`,`*`等)接口，容器本身并不出现在泛型中，它可以是任意Stack, List, Pair等提供了迭代器的标准甚至自定义容器
+2. 函数本身亦可泛型: 已经有函数是第一类对象的雏形，上例中的BinaryOperation既可是一个函数，也可是一个函数对象(重载了`()`的对象)，STL提供了很多函数对象，如加减乘除
+3. 大量的运算符重载: 双刃剑(方便vs隐晦)，主要是为了兼容C，比如迭代器`++`操作本身相当于`Next()`
+4. 泛型声明本身不包含对class的任何约束说明: 依赖于编译时对泛型代码的生成来检查，并且运算符重载，隐式构造函数等特性让算法在理解和使用在有一些负担。这是个人认为还不够好的地方，对应的解决方案有: **bounded generic types**，下一节会提到
+
+C++/Java/C#都提供了泛型机制，但它们的实现方式有些区别，Java的实现方式是"类型擦除(Type Erasure)"，即在编译时将`List<T>`变为`List<Object>`，然后加上一些类型检查和类型提取转换，Java运行时没有关于泛型的任何信息，它只会看到Object(动态类型语言的思路)，这样最大的好处在于兼容性，即老的Java运行时也可以运行泛型代码，缺点是由于运行时不知道T的具体类型，因此无法对T进行诸如instanceof,new等操作。C#/C++的泛型则被称为"模板泛型"，即有运行时的支持，对使用者来说像是为每个类型T都生成了对应的ListT类，因此克服了Java这方面的缺点，是语义完整的。C++的template则更强大，它可以实现所谓的元编程，即在模板语法中可以使用分支(偏特化)，递归等特性达到图灵完全性，如你可以通过模板语法求斐波那契数列(写法和函数式语言类似)，并将运算结果或错误在编译器就吐出来，因此C++被戏称"两层语言"，一层是生成C++目标代码的函数式语言(使用模板语法)，另一层才是命令式语言(C++本身)。当然这并不是C++的初衷，这里不再展开。
 
 Go目前没有对开发者提供泛型(据说Go2.0会加入泛型)，它的代码复用主要靠interface+reflect(额外运行时type check开销)或code generator(额外的复杂度和开发成本)来实现，它们只能解决很少一部分对泛型的需求，因此Go在这方面被广为诟病，比如知乎上[Go有什么泛型的实现方法？](https://www.zhihu.com/question/62991191)的高票答案，相信大部分Gopher都深有体会:
 
@@ -347,29 +348,36 @@ String s = (String)(new LamePair("hi",4).y); // error caught only at run-time
 
 由于在构建LamePair时，进行了向上转换(将传入的参数转换为共同的supertype Object)，因此这里实际会有类型信息丢失，当外部想要再次获取LamePair中的元素时，就不得不进行一次向下转换(downcast)，如`(String)e`，这类转换属于run-time check，即将一部分本应在静态类型检查时暴露的错误放到了运行时，这是有悖静态类型语言的初衷的。所有的对象都属于Object，将所有的方法参数返回值都声明为Object，这是动态类型语言的思路。
 
-因此subtyping在某些场景下不能替换generics，那反过来呢，如果我们用ML的generics来实现distFromOrigin2:
+因此subtyping在某些场景下不能替换generics，那反过来呢，如果我们用C++的template来实现distFromOrigin2:
 
+```c++
+class Point {
+	float x;
+	float y;
+
+public:
+	float X(void) { return x; }
+	float Y(void) { return y; }
+};
+
+class ColorPoint {
+	float x;
+	float y;
+	string color;
+public:
+	float X(void) { return x; }
+	float Y(void) { return y; }
+};
+
+template<class T>
+float distFromOrigin2(T b) {
+    return sqrt(b.X()*b.X() + b.Y()*b.Y());
+}
 ```
-fun distFromOrigin2(getx,gety,v) =
-    let
-        val x = getx v
-        val y = gety v
-    in
-        Math.sqrt (x*x + y*y)
-    end
-fun distFromOriginPt (p : {x:real,y:real}) =
-    distFromOrigin2(fn v => #x v,
-                fn v => #y v,
-                p)
-fun distFromOriginColorPt (p : {x:real,y:real,color:string}) =
-    distFromOrigin2(fn v => #x v,
-                fn v => #y v,
-                p)
-```
 
-可以看到，仍然是一种很蹩脚的写法，因为Point/ColorPoint本身的字段存取是可以复用的(它们调用distFromOrigin2的getter/setter都是一样的)，但是generics本身对传入的类型一无所知，因此它需要一堆的getter/setter来辅助它认识这个类型。
+可以看到，仍然是一种很蹩脚的写法，由于泛型函数本身对类型缺乏认识，通常需要一堆辅助函数(`X()`,`Y()`)来帮忙完成算法的运作，前面的STL accumulate中的迭代器类型参数也是这个作用。如此`distFromOrigin2`虽然复用了，但并没解决Point/ColorPoint的其它字段和方法的复用问题。
 
-综上，subtype和generics各自有自己的适用情形，不存在绝对的优劣。subtype是基于supertype上的操作复用。而generics基于任意类型T，对T之上的操作模式(如Stack,List,Pair,Swap等)进行抽象复用，并且可能**构造出对应的函数和类**(Java这种擦除式泛型除外)。
+综上，subtype和generics各自有自己的适用情形，它们作用于不同维度。subtype是基于supertype上的操作复用，强调类与类的复用关系。而generics基于任意类型T，对T之上的容器封装(如Stack,List,Pair,Swap等)和算法复用(如Sort,Find,Reduce等)，强调类通用的扩展。从另一个角度来讲，subtype可以实现运行时多态(dynamic dispatch)，而generics则是编译期多态(编译期生成新的类/函数)。
 
 事实上，Java/C#同时支持subtyping和generics，因此它们支持一种将两种结合的polymorphism: **bounded generic types**，核心思想是通过subtype来限制generics可接受的类型，想要鱼和熊掌兼得。比如:
 
