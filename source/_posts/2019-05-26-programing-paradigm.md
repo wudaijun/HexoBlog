@@ -375,7 +375,7 @@ float distFromOrigin2(T b) {
 }
 ```
 
-可以看到，仍然是一种很蹩脚的写法，由于泛型函数本身对类型缺乏认识，通常需要一堆辅助函数(`X()`,`Y()`)来帮忙完成算法的运作，前面的STL accumulate中的迭代器类型参数也是这个作用。如此`distFromOrigin2`虽然复用了，但并没解决Point/ColorPoint的其它字段和方法的复用问题。
+可以看到，仍然是一种很蹩脚的写法，由于泛型函数本身对类型缺乏认识，通常需要一堆辅助函数(`X()`,`Y()`)来帮忙完成算法的运作，前面的STL accumulate中的迭代器类型参数也是这个作用，即便如此虽然`distFromOrigin2`复用了，但并没解决Point/ColorPoint的其它字段和方法的复用问题。当然，就本例而言，即便这里的ColorPoint是Point的subtype，C++ template额外生成的函数以及丢失的dynamic dispatch也提示着将distFromOrigin2实现为Point方法是更好的选择。
 
 综上，subtype和generics各自有自己的适用情形，它们作用于不同维度。subtype是基于supertype上的操作复用，强调类与类的复用关系。而generics基于任意类型T，对T之上的容器封装(如Stack,List,Pair,Swap等)和算法复用(如Sort,Find,Reduce等)，强调类通用的扩展。从另一个角度来讲，subtype可以实现运行时多态(dynamic dispatch)，而generics则是编译期多态(编译期生成新的类/函数)。
 
