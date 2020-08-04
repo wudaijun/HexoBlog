@@ -120,6 +120,9 @@ system.profile集合中，关键字段：op(操作类型), ns(操作集合), ts(
 
 更多[参考][db.collStats()]。
 
+### 7. db.enableFreeMonitoring
+
+Mongo官方提供的免费监视服务，可以脱离altas云服务独立使用，`db.enableFreeMonitoring()`会返回一个URL地址，上面有包含MongoDB内存，CPU，读写，网络，磁盘等全方位的可视化监控。
 
 [db.serverStatus()]: https://docs.mongodb.com/manual/reference/command/serverStatus/
 [mongostat]: https://docs.mongodb.com/manual/reference/program/mongostat/
