@@ -343,7 +343,7 @@ public:
 };
 ```
 
-Delegate保存回调函数，并且提供调用接口，调用接口Call仅有一个参数，就是解码器，也是DelegateManager的模板参数。对于我们的`\_player\_delegate`来说，就是`pair<Player*, ProtocolReader&>`。而上面的Delegate类是默认实现，通过Decode全局函数完成对Decoder的解码，在前面消息编解码中提到过，ProtocolReader实现了这样一个接口。而对于我们的pair，需要特例化，方式一是特例化Decode，方式二是特例化Delegate类。我们采用方法二：
+Delegate保存回调函数，并且提供调用接口，调用接口Call仅有一个参数，就是解码器，也是DelegateManager的模板参数。对于我们的`_player_delegate`来说，就是`pair<Player*, ProtocolReader&>`。而上面的Delegate类是默认实现，通过Decode全局函数完成对Decoder的解码，在前面消息编解码中提到过，ProtocolReader实现了这样一个接口。而对于我们的pair，需要特例化，方式一是特例化Decode，方式二是特例化Delegate类。我们采用方法二：
 
 ```c++
 // AutoCallSpecial.h
