@@ -1,19 +1,17 @@
 ---
 layout: post
 title: NGServer 消息的注册与回调
-categories:
-- gameserver
-tags:
-- ngserver
+categories: gameserver
+tags: ngserver
 ---
 
 在前面Service框架的介绍中，提到在GameService的`ProcessMsg(UserMessage*)`和`ProcessMsg(InsideMessage*)`中，都完成了消息的回调处理。消息响应函数的注册是在服务初始化(Init())中完成的。需要注册和回调的消息有InsideMessage和UserMessage，对于InsideMessage，响应函数只有一种形式：即为响应服务的成员函数。而对于UserMessage，由于UserMessage有Player指针，响应函数则会有多种形式：
 
-<!--more-->
-
 1. 作为注册Service的成员函数，并且将Player作为第一个参数。这常在登录和注册流程中发生，如 `LoginService::OnPlayerLogin(Player& player, const C2S_Login& msg)`。 登录和注册的验证流程在LoginService中统一处理。
 2. 作为Player的成员函数，当Player登录成功后，此时客户端与服务器进行的交互都是基于业务逻辑的，因此应在Player的成员函数处理。如 `Player::OnEnterGate(const C2S_EnterGate& msg)`
 3. 其它响应函数，如全局函数。
+
+<!--more-->
 
 事实上，基于UserMessage中的Player指针，我们可以实现上面的调用方式，现在就需要通过一种或多种的注册回调机制，来实现对各种响应函数形式的注册和回调。
 
@@ -38,7 +36,7 @@ bool MapService::Init()
 
 上面注册了三种主要消息，通过RegistPlayer注册玩家消息，通过RegistInside注册内部消息。RegistPlayer通过模板推导和函数重载完成了三种响应函数原型的注册。下面以RegistPlayer为例，讲述消息注册机的内部机制：
 
-```
+```c++
 class GameService : public Service
 {
 // ....
@@ -72,7 +70,7 @@ private:
 
 在`bool MapService::ProcessMsg(UserMessage* msg)`中回调响应函数：
 
-```
+```c++
 bool MapService::ProcessMsg(UserMessage* msg)
 {
     UserMessageT<PlayerPtr>* msgT = dynamic_cast<UserMessageT<PlayerPtr>*>(msg);
@@ -118,13 +116,13 @@ bool MapService::ProcessMsg(UserMessage* msg)
 }
 ```
 
-在`bool MapService::ProcessMsg(UserMessage* msg)`中，取出UserMessage中的PlayerPtr指针，将其与ProtocolReader一起打包成std::pair，而事实上，这个pair才是最终的解码器，在这一点上，也可以专门写一个UserMessageReader类来读取UserMessage的Player指针，以及消息数据。后面也会向这方面改进。可以注意到这个pair也是 _player_delegate的DelegateManager模板参数,下面介绍DelegateManager.
+在`bool MapService::ProcessMsg(UserMessage* msg)`中，取出UserMessage中的PlayerPtr指针，将其与ProtocolReader一起打包成std::pair，而事实上，这个pair才是最终的解码器，在这一点上，也可以专门写一个UserMessageReader类来读取UserMessage的Player指针，以及消息数据。后面也会向这方面改进。可以注意到这个pair也是 `_player_delegate`的DelegateManager模板参数,下面介绍DelegateManager.
 
 #### DelegateManager
 
 DelegateManager是一个模板类，它第一个模板参数Decoder，是解码器
 
-```
+```c++
 // AutoCall.h
 template<typename Decoder, size_t Capacity = 65535>
 class DelegateManager
@@ -244,7 +242,7 @@ Regist的多种重载识别出需要创建的Delegate对象，由DelegateManager
 
 DelegateManager中，通过Delegate类来代理响应函数。CreateDelegate用于创建响应函数对应的Delegate：
 
-```
+```c++
 // AutoCall.h
 template<typename Decoder, typename FuncT>
 IDelegate<Decoder>* CreateDelegate0(FuncT f)
@@ -267,7 +265,7 @@ IDelegate<Decoder>* CreateDelegate2(FuncT f)
 
 最终的Delegate，需要保存回调函数，并提供调用接口Call:
 
-```
+```c++
 template <typename Decoder>
 class IDelegate
 {
@@ -345,9 +343,9 @@ public:
 };
 ```
 
-Delegate保存回调函数，并且提供调用接口，调用接口Call仅有一个参数，就是解码器，也是DelegateManager的模板参数。对于我们的\_player\_delegate来说，就是pair<Player*, ProtocolReader&>。而上面的Delegate类是默认实现，通过Decode全局函数完成对Decoder的解码，在前面消息编解码中提到过，ProtocolReader实现了这样一个接口。而对于我们的pair，需要特例化，方式一是特例化Decode，方式二是特例化Delegate类。我们采用方法二：
+Delegate保存回调函数，并且提供调用接口，调用接口Call仅有一个参数，就是解码器，也是DelegateManager的模板参数。对于我们的`\_player\_delegate`来说，就是`pair<Player*, ProtocolReader&>`。而上面的Delegate类是默认实现，通过Decode全局函数完成对Decoder的解码，在前面消息编解码中提到过，ProtocolReader实现了这样一个接口。而对于我们的pair，需要特例化，方式一是特例化Decode，方式二是特例化Delegate类。我们采用方法二：
 
-```
+```c++
 // AutoCallSpecial.h
 /*******************************************************************************************************/
 /*   特例化Decoder: std::pair<T1, ProtocolReader&> T1是响应函数的第一个参数 其他参数从ProtocolReader中读取  */
@@ -398,6 +396,6 @@ AutoCallSpecial.h中还对InsideMessage完成了特例化，而消息的回调�
 
 1. 先自定义一个解码器，将所需参数包含进去，解码器可以是个自定义类，也可以是个容器或其它，将其作为DelegateManager的模板参数
 2. 在CallBackType中添加该回调类型
-3. 在对应ProcessMsg中，组建自己的解码器，调用DelegateManager::Call函数
-4. DelegateManager会最终调到 Delegate::Call 因此如果有必要  需要对Delegate进行特例化，保证使用你的解码器能正确解码 或者直接使用默认Delegate类中的Decode方式，特例化全局Decode函数。
+3. 在对应ProcessMsg中，组建自己的解码器，调用`DelegateManager::Call`函数
+4. DelegateManager会最终调到 `Delegate::Call` 因此如果有必要，需要对Delegate进行特例化，保证使用你的解码器能正确解码，或者直接使用默认Delegate类中的Decode方式，特例化全局Decode函数。
 

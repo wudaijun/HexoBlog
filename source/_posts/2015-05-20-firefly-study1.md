@@ -9,15 +9,7 @@ categories: gameserver
 
 ## 一. 简介
 	
-firefly是一款python开发的开源游戏服务器框架，基于分布式，底层使用twisted。
-
-<!--more-->
-
-具体介绍可参见：
-
-- [firefly on github](firefly_on_git)
-- [firefly官网](firefly_9miao)
-- [firefly官方Wiki](firefly_doc)
+[firefly](https://github.com/9miao/firefly)是一款python开发的开源游戏服务器框架，基于分布式，底层使用twisted。
 	
 firefly采用多进程方案，节点之间通过网络通信(当然你也可以创建单节点，独立完成大部分功能)，具有很好的可扩展性。
 
@@ -28,6 +20,7 @@ firefly采用多进程方案，节点之间通过网络通信(当然你也可以
 下面的Demo的源代码可在[我的Github](demo_github)上下载。
 
 ### 1. 流程
+
 总体上看，如果你要使用firefly，所需要做的事就是：
 
 - 通过配置文件定义所有节点，节点配置，节点实现文件，以及节点和节点之间的联系(通过网络端口)
@@ -35,6 +28,8 @@ firefly采用多进程方案，节点之间通过网络通信(当然你也可以
 - 启动主节点
 
 firefly通过配置文件来设定你的分布式服务器，然后你只需创建和启动master节点，master服务器会启动配置文件中的各个子节点：
+
+<!--more-->
 
 	if __name__=="__main__":
     	from firefly.master.master import Master
@@ -244,11 +239,6 @@ Client端:
 
 ### 3. 待续
 
-
-[firefly_on_git]: https://github.com/9miao/firefly
-[firefly_9miao]: http://firefly.9miao.com/
-[gfirefly_blog_csdn]: http://blog.csdn.net/yueguanghaidao/article/details/38500649
-[gfirefly_blog_9miao]: http://www.9miao.com/forum.php?mod=viewthread&tid=49413&highlight=firefly
 [flask]: http://docs.jinkan.org/docs/flask/
 [firefly_doc]: http://firefly.9miao.com/down/Firefly_wiki.CHM
 [demo_github]: https://github.com/wudaijun/firefly-example

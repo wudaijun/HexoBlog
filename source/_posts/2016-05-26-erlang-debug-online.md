@@ -35,6 +35,8 @@ categories: erlang
 	
 `run_erl`是随OTP发布的命令，它通过管道来与Erlang节点交互，仅类Unix系统下可用。上面的命令启动Erlang节点，将tmp/目录设为节点管道目录，之后`run_erl`会在tmp下创建`erlang.pipe.1.r erlang.pipe.1.w`两个管道文件，外部系统可通过该管道文件向节点写入/读取数据。可用OTP提供的`to_erl`命令通过管道连接到节点:
 
+<!--more-->
+
 		to_erl tmp/
 		Attaching to tmp/erlang.pipe.1 (^D to exit)
 		1> 

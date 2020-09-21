@@ -7,7 +7,6 @@ categories: gameserver
 ---
 
 NGServer是一个迷你型C++游戏服务器框架。Github地址：https://github.com/wudaijun/NGServer。
-<!--more-->
 
 ### 主要特性：
 
@@ -15,6 +14,8 @@ NGServer是一个迷你型C++游戏服务器框架。Github地址：https://gith
 - 基于单进程多线程。
 - 框架屏蔽了多线程实现，上层体现为服务(Service)，服务之间通过消息进行通信。
 - 有比较完善灵活的的消息回调和序列化机制，更方便地实现RPC。
+
+<!--more-->
 
 ### 设计原则：
 

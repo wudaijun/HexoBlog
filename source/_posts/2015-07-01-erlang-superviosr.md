@@ -9,11 +9,11 @@ categories: erlang
 
 Supervisor(监督者)用于监督一个或多个Erlang OTP子进程，Supervisor本身是个behaviour，仅有一个Callback: `init/1`，该函数返回{ok, {ChildSpecList, RestartStrategy}}。ChildSpecs是ChildSpec列表，
 
-<!--more-->
-
 **ChildSpec(子进程规范)**：
 
 指定要监控的子进程的所在模块，启动函数，启动参数，进程类型等等。格式为:
+
+<!--more-->
 
 ```
 child_spec() = {id => child_id(),	   	  % 一般为Child所在Module名

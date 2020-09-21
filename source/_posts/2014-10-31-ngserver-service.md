@@ -9,11 +9,12 @@ tags:
 
 NGServer的核心概念便是服务(Service)，它对逻辑层表现为一个线程，处理各种特定的相关业务。如日志服务(LogService)，数据库服务(DBService)，登录服务(LoginService)。服务之间通过消息进行交互。Service实际上并不是一个独立线程，Service与线程是一种"多对多"的关系。即所有的Service通过ServiceManager来管理，后者维护一个线程池，并将线程池与"服务池"以某种调度方式关联，让线程充分被利用。
 
-<!--more-->
-
 下面由下至上对Service框架和运行机制简单阐述：
 
+<!--more-->
+
 ## Message定义
+
 NGServer中的消息定义于Message.h中，主要定义了如下几种消息，它们的继承体系如下：
 
  ![](/assets/image/201410/NGServer_Message_Hierarchy.png "Message继承体系")

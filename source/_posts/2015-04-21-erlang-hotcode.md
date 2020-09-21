@@ -7,8 +7,6 @@ categories: erlang
 
 erlang 热更是指在erlang系统不停止运行的情况下，对模块代码进行更新的特性，这也是erlang最神奇的特性之一。特别适用于游戏服务器，做活动更新，漏洞修复等。
 
-<!--more-->
-
 ## 一. 简单示例
 
 ```
@@ -28,6 +26,8 @@ run() ->
 start() ->
 	spawn(fun() -> run() end).
 ```
+
+<!--more-->
 
 1. 在erl shell中运行test:
 

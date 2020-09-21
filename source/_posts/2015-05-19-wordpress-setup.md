@@ -4,13 +4,14 @@ layout: post
 tag: tool
 categories: tool
 ---
-记录一下搭建wordpress博客的过程，做备忘之用，仅供参考。
 
-<!--more-->
+记录一下搭建wordpress博客的过程，做备忘之用，仅供参考。
 
 ### 一. 前期准备
 
-一台云服务器和一个域名(可选)。国内的服务器搭建网站需要备案，国外的话推荐linode，目前linode tokyo服务器应该是国内访问最快的，但是已经缺货了，而新开的singapore服务器线路优化又不是很好(ping 300+)，后来又换成了fremont，速度总算稳定了一些，210 ping左右。
+一台云服务器和一个域名(可选)。国内的服务器搭建网站需要备案，国外的话推荐linode，目前linode tokyo服务器应该是国内访问最快的，但是已经缺货了，而新开的singapore服务器线路优化又不是很好(ping 300+)，后来又换成了fremont，速度总算稳定了一些，ping值 210 左右。
+
+<!--more-->
 
 ### 二. 部署wordpress
 

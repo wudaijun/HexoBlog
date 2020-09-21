@@ -23,6 +23,8 @@ tags: os
 
 图中忽略了一些细节，现代的CPU Cache通常分为三层，分别叫L1,L2,L3 Cache, 其中L1,L2 Cache为每个CPU核特有，L3为所有CPU核共有，L1还分为缓存指令的i-cache(只读)和缓存程序数据的d-cache，L2 L3 Cache则不区分指令和程序数据，称为统一缓存(unified cache)。本文主要讨论缓存命中和缓存一致性的问题，因此我们只关注L1 Cache，不区分指令缓存和程序数据缓存。
 
+<!--more-->
+
 ### Cache Geometry
 
 当CPU加载某个地址上的数据时，会从Cache中查找，Cache由多个Cache Line构成(通常L1 Cache的Cache Line大小为64字节)，因此目标地址必须通过某种转换来映射对应的Cache Line，我们可以很容易想到两种方案:

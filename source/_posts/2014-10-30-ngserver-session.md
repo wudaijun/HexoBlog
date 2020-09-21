@@ -9,13 +9,13 @@ tags:
 
 在网络编程模型中，一个Session代表一次会话，主要维护网络数据的发送和接收。对外提供发送数据和处理数据的接口。一个高效的Session主要通过缓冲和异步来提高IO效率。NGServer的Session运用双缓冲和boost::asio的异步机制，很好地做到了这一点。
 
-<!--more-->
-
 ## 一. 双缓冲
 在网络IO中，读写线程的互斥访问一直都是一个关乎性能的大问题。为了减少互斥锁的使用，环形缓冲和双缓冲是常见的策略。NGServer使用后者作为消息和数据缓冲。
 在NGServer MessageQueue.h中，定义了两种双缓冲：基于消息的MessageQueue和基于数据的ByteBuff。下面简要介绍ByteBuff类：
 
 ByteBuff类的基本思想是通过两个缓冲区\_buff\_read和\_buff\_write来使读写分离。通过`size_t Push(const char* data, size_t len)`来写入数据：
+
+<!--more-->
 
 ```
 // 压入字节流数据 压入成功 则返回当前缓冲区长度 否则返回0

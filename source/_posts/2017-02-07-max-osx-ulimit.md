@@ -24,6 +24,8 @@ launchctl管理OS X的启动脚本，控制启动计算机时需要开启的服�
 
 	$ sudo launchctl load -w /System/Library/LaunchDaemons/org.apache.httpd.plist
 
+<!--more-->
+
 关于launchctl的plist格式和用法参考:
 
 1. [launchctl man page](https://developer.apple.com/legacy/library/documentation/Darwin/Reference/ManPages/man1/launchctl.1.html)

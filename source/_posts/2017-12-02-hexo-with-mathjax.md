@@ -20,6 +20,8 @@ hexo-renderer-karmed渲染器fork自hexo-renderer-marked，对mathjax的支持�
 	
 在主题`layout/_partial/`目录下添加mathjax.ejs:
 
+<!--more-->
+
 	<!-- mathjax config similar to math.stackexchange -->
 	<script type="text/x-mathjax-config">
 	  MathJax.Hub.Config({
