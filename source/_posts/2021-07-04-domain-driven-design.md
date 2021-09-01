@@ -1,5 +1,5 @@
 ---
-title: 领域驱动开发思维导图
+title: 领域驱动设计思维导图
 layout: post
 categories: mindmap
 tags: programing
