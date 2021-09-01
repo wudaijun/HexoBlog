@@ -89,7 +89,7 @@ search:
 ## Docs: http://hexo.io/docs/deployment.html
 deploy:
   type: git
-  repo: https://github.com/wudaijun/wudaijun.github.io.git
+  repo: git@github.com:wudaijun/wudaijun.github.io.git
   branch: master
 
   #feed:
