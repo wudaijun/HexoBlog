@@ -9,7 +9,7 @@ categories: go
 
 ## 一. 不要过早优化
 
-虽是老生常谈，但确实需要在做性能优化的时候铭记在心，说说我的理解:
+虽是老生常谈，但确实需要在做性能优化的时候铭记在心，个人的体会:
 
 1. first make it work, then measure, then optimize
 2. 二八原则
@@ -255,31 +255,47 @@ func stringBuilder() string {
 1. 函数返回变量地址，或返回包含变量地址的struct，刚才已经讨论过
 2. 将变量地址写入channel或sync.Pool，编译器无法获悉其它goroutine如何使用这个变量，也就无法在编译时决议变量的生命周期
 3. 闭包也可能导致闭包上下文逃逸
-4. slice变量超过cap重新分配时，将在堆上进行，栈的大小毕竟是固定和有限的
-5. 将变量地址赋给可扩容容器(如map,slice)时
-6. 将变量赋给可扩容Interface容器(k或v为Interface的map，或[]Interface)时
-7. 涉及到Interface的地方都有可能导致对象逃逸，`MyInterface(x).Foo(a)`将会导致x逃逸，如果a是引用语义(指针,slice,map等)，a也会分配到堆上，涉及到Interface的很多逃逸优化都很保守，比如`reflect.ValueOf(x)`会显式调用`escapes(x)`导致x逃逸。
+4. 将变量地址赋给可扩容容器(如map,slice)时，slice/map超过cap重新分配时，将在堆上进行，栈的大小毕竟是固定和有限的
+5. 涉及到Interface的很多逃逸优化都比较保守，如`reflect.ValueOf(x)`会显式调用`escapes(x)`导致x逃逸
+
 第4点和第5点单独说下，以slice和空接口为例:
 
 ```go
 func example() {
-    s1 := make([]int, 10)
-    s2 := make([]*int, 10)
-    s3 := make([]interface{}, 10)
-    a := 123
-    s1[1] = a 	// case1: 导致a分配在栈在
-    s2[1] = &a 	// case2: 导致a分配到堆上
-    s3[1] = a	   // case3: 导致a分配在堆上
-    s3[1] = &a	// case4: 导致a分配在堆上
+	s1 := make([]int, 10)
+	s2 := make([]*int, 10)
+	s3 := make([]interface{}, 10)
+	a, b, c, d := 456, 456, 456, 456
+	e := 123
+	f := struct{X int; Z int}{}
+	// 值语义slice, a将分配在栈上
+	s1[1] = a
+
+	// 引用语义slice, 引用b的地址，b将分配在堆上
+	s2[2] = &b
+
+	// 引用语义slice, 引用c的值，c将分配在栈上，但s3[3]对应interface{}中的data会分配一个int的空间，然后将c值赋给该堆内存
+	s3[3] = c
+
+	// 引用语义slice，引用d的地址，d将分配在堆上，s3[4]对应interface{}的data值即为d的地址
+	s3[4] = &d
+
+	// 引用语义slice，引用e的值，e同样将分配在栈上，但s3[5]本身也不再分配int堆内存(go1.15专门为0~255的小整数转interface作了[staticuint64s预分配优化](https://github.com/golang/go/blob/dev.boringcrypto.go1.15/src/runtime/iface.go#L532))
+	s3[5] = e
+
+	// 引用语义slice，引用f的值，f将分配在栈上，s3[6]对应interface{}的data会分配一个新的16B的空间，并拷贝f的值
+	s3[6] = f
+
+	// 通过println打印不会导致逃逸
+	println(&a, &b, &c, &d, &e, &f, s3[3], s3[4])
 }
 ```
 
-首先我们知道slice重分配是在堆上，slice重分配时，会发生数据迁移，此时要将原本slice len内的元素*浅拷贝*到新的空间，而这个浅拷贝会导致新的slice(堆内存)引用了p(栈内存)的内容，而栈内存和堆内存的生命周期是不一样的，可能出现函数返回后，堆内存引用无效的栈内存的情况，这会影响到运行时的稳定性。因此即使slice变量本身没有显式逃逸，但由于隐式的数据迁移，编译器会保守地将slice或map的指针elem逃逸到堆上。这就是第4点的原因，也解释了上面代码中的case1 case2 case4，现在来看看case3。
+由于栈空间是在编译期确定的，slice重分配只能发生在堆上。目前golang逃逸分析还不能完全分析slice的生命周期和扩容可能性，它会保守地保证slice元素只能指向堆内存(否则重分配后，浅拷贝会导致堆内存引用了栈内存)，因此可能会发生逃逸。
 
-简单来说，interface{}让值语义变为引用语义，interface{}本质上为typ + pointer，这个pointer指向实际的data，参考我之前写的[go interface实现](https://wudaijun.com/2018/01/go-interface-implement/)。`s3[i] = a`实际上让s3 slice持有了a的引用，因此a会逃逸到堆上分配。
+当slice元素为interface时，情况和s2类似，interface{}本质为引用语义，即为typ + pointer，这个pointer指向实际的data，参考我之前写的[go interface实现](https://wudaijun.com/2018/01/go-interface-implement/)。interface的pointer总是指针(不会类似Erlang Term一样对立即数进行优化，就地存储)，因此执行`s3[3] = c`时，本质会新分配一个对应空间，然后拷贝值，最后让pointer指向它。不让这个int值直接逃逸的原因是，执行该赋值后，本质上c和s3[3]是相互独立的，s3[3]为一个只读的int，而c的值是可以随时变化的，不应该相互影响，因此不能直接引用c的地址。虽然没有立即数优化，但是Go1.15之后，对小整数转interface{}进行了优化，也算聊胜于无。
 
-我们逻辑中调用的`fmt.Sprintf`或`logrus.Debugf`都会导致所有传入参数逃逸，因为不定参数实际上是slice的语法糖，编译器无法确定`logrus.Debugf`不会对参数slice进行append操作导致重分配，只能保守地将传入的参数分配到堆上以保证浅拷贝是正确的。我认为用保守来形容Go的逃逸分析策略是比较合适的，比如前面代码的s1,s2,s3，既slice变量本身没有逃逸，也没有发生扩容，那么让slice以及其元素都在栈上应该是安全的，目前不理解Go编译器出于何种考虑没有做这种优化。当然，好的逃逸分析需要在编译期更深入地理解程序，这本身就是非常困难的，特别是当涉及到interface{}，指针，可扩展容器的时候。
-
+Golang一直在做interface相关的优化，如Go1.10开始提出的[devirtualization](https://github.com/golang/go/issues/19361)，编译器在能够知晓Interface具体对象的情况下(如`var i Iface = &myStruct{}`)，可以直接生成对象相关代码调用(通过插入类型断言)，而无需走Interface方法查找，同时助力逃逸分析。devirtualization还在不断完善(最初会导致receiver和参数逃逸，[这里](https://github.com/golang/go/issues/33160#issuecomment-512653356)有讨论，该问题20年底已经[Fix](https://go-review.googlesource.com/c/go/+/264837/5))。Go1.15的[staticuint64s预分配优化](https://github.com/golang/go/blob/dev.boringcrypto.go1.15/src/runtime/iface.go#L532)避免了小整数转换为interface{}的内存分配。目前Go的逃逸分析策略还相对保守，比如前面代码的s2，既slice变量本身没有逃逸，也没有发生扩容，那么让slice以及其元素都在栈上应该是安全的。当然，好的逃逸分析需要在编译期更深入地理解程序，这本身也是在保证安全的前提下循序渐进的。
 
 ### 2. 内联
 
@@ -300,15 +316,11 @@ func foo() {
 
 `NewCoord`这类简单的构造函数都会导致返回值分配在堆上，抽离函数的代价也更大。因此Go的内联，逃逸分析，GC是名副其实的三剑客，它们共同将其它语言避之不及的指针变得"物美价廉"。
 
-Go1.9开始对内联做了比较大的运行时优化，开始支持[mid-stack inline](https://go.googlesource.com/proposal/+/master/design/19348-midstack-inlining.md)，talk链接在[这里](https://docs.google.com/presentation/d/1Wcblp3jpfeKwA0Y4FOmj63PW52M_qmNqlQkNaLj0P5o/edit#slide=id.g1d00ad65a7_2_17)。并且支持通过`-l`编译参数指定内联等级(参数定义参考[cmd/compile/internal/gc/inl.go](https://github.com/golang/go/blob/71a6a44428feb844b9dd3c4c8e16be8dee2fd8fa/src/cmd/compile/internal/gc/inl.go#L10-L17))。并且只在`-l=4`中提供了mid-stack inline，据Go官方统计，这大概可以提升9%的性能，也增加了11%左右的二进制大小。
+Go1.9开始对内联做了比较大的运行时优化，开始支持[mid-stack inline](https://go.googlesource.com/proposal/+/master/design/19348-midstack-inlining.md)，talk链接在[这里](https://docs.google.com/presentation/d/1Wcblp3jpfeKwA0Y4FOmj63PW52M_qmNqlQkNaLj0P5o/edit#slide=id.g1d00ad65a7_2_17)。并且支持通过`-l`编译参数指定内联等级(参数定义参考[cmd/compile/internal/gc/inl.go](https://github.com/golang/go/blob/71a6a44428feb844b9dd3c4c8e16be8dee2fd8fa/src/cmd/compile/internal/gc/inl.go#L10-L17))。并且只在`-l=4`中提供了mid-stack inline，据Go官方统计，这大概可以提升9%的性能，也增加了11%左右的二进制大小。Go1.12开始默认支持了mid-stack inline。
 
-Go1.10做一些Interface相关的优化，如[devirtualization](https://github.com/golang/go/issues/19361)，编译器在能够知晓Interface具体对象的情况下(如`var i Iface = &myStruct{}`)，可以直接生成对象相关代码调用(还不是内联)，而无需走Interface方法查找。目前devirtualization优化还不完善，还不能应用于逃逸分析优化([这里](https://github.com/golang/go/issues/33160#issuecomment-512653356)有讨论)。
+我们目前还没有调整过内联参数，因为这是有利有弊的，过于激进的内联会导致生成的二进制文件更大，CPU instruction cache miss也可能会增加。默认等级的内联大部分时候都工作得很好并且稳定。
 
-Go1.12开始默认支持了mid-stack inline。
-
-PS: 关注和更新Go最新版本可能是最"廉价"的优化手段。如GC，编译器优化，defer等特性都还在不断改进，毕竟Go还很年轻
-
-我们目前还没有调整过内联参数，因为这是有利有弊的，过于激进的内联会导致生成的二进制文件更大，CPU instruction cache miss也可能会增加。默认等级的内联大部分时候都工作得很好并且稳定，到目前(Go1.13)为止，对Interface方法的调用还不能被内联(即使编译器知晓具体类型):
+到目前(Go1.16)为止，虽然对Interface方法的调用还不能被内联(即使编译器知晓具体类型)，但由于:
 
 ```go
 type I interface {
@@ -329,8 +341,8 @@ func BenchmarkX(b *testing.B) {
 		// var a = &A{}
 		// a.F()
 		// 对Interface的方法调用不能被内联 18.4 ns/op
-		var i I = &A{}
-		i.F()
+		var iface I = &A{}
+		iface.F()
 	}
 }
 ```
