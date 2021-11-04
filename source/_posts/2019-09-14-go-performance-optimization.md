@@ -32,10 +32,9 @@ Golang运行时的内存分配算法主要源自 Google 为 C 语言开发的TCM
 
 Go的`sync.Pool`包是Go官方提供的内存池，在使用sync.Pool时，需要注意:
 
-1. sync.Pool是goroutine safe的，也就是会用mutex
-2. sync.Pool无法设置大小，所以理论上只受限于系统内存大小
-3. sync.Pool中的对象不支持自定义过期时间及策略
-4. sync.Pool中的对象会在GC开始前全部清除，这样可以让Pool大小随应用峰值而自动收缩扩张，更有效地利用内存。在go1.13中有优化，会留一部分Object，相当于延缓了收缩扩张的速度
+1. sync.Pool是goroutine safe的，并发控制会带来少部分开销(经过多级缓存已经无锁优化，这部分开销大部分时候都不用过多关注)
+2. sync.Pool无法设置大小，所以理论上只受限于GC临界值大小
+3. sync.Pool中的对象不支持自定义过期时间及策略，go1.13前sync.Pool中的对象会在GC开始前全部清除，在go1.13中有优化，会留一部分Object，相当于延缓了收缩扩张的速度
 
 sync.Pool适用于跨goroutine且需要动态伸缩的场景，典型的如网络层或日志层，每个连接(goroutine)都需要Pool，并且连接数是不稳定的。
 
@@ -240,7 +239,7 @@ func stringBuilder() string {
 
 简单总结下:
 
-- `fmt.Sprintf`: 适用于将其它类型格式化为字符串，灵活性高
+- `fmt.Sprintf`: 适用于将其它类型格式化为字符串，灵活性高，但由于逃逸会导致大量的内存分配(后面讲逃逸会再次提到)
 - `+`: 适用于少量的的常量字符串拼接，易读性高
 - `bytes.Buffer`: 有比slice默认更激进的cap分配，它的`String()`方法需要拷贝。适用于大量的字符串的二进制拼接，如网络层。
 - `strings.Builder`: 底层使用slice默认cap分配，主要的优点是调用`String()`不需要拷贝(直接地址转换)，适用于要求输出结果是string的地方
@@ -250,7 +249,12 @@ func stringBuilder() string {
 
 ### 1. 逃逸分析
 
-前面简单提了下逃逸分析，这里我们再深入讨论下，逃逸分析虽然好用，却并不免费，只有理解其内部机制，才能将收益最大化(开发效率vs运行效率)。逃逸分析的本质是当编译器发现函数变量将脱离函数栈有效域或被函数栈有效域外的变量所引用时时，将变量分配在堆上而不是栈在，典型的情况有:
+前面简单提了下逃逸分析，这里我们再深入讨论下，逃逸分析虽然好用，却并不免费，只有理解其内部机制，才能将收益最大化(开发效率vs运行效率)。逃逸分析的本质是当编译器发现函数变量将脱离函数栈有效域或被函数栈有效域外的变量所引用时时，将变量分配在堆上而不是栈在。也可以用两个不变性约束来描述:
+
+1. 指向栈对象的指针不能存放在堆中
+2. 指向栈对象的指针的生命周期不能超过该栈对象
+
+典型导致逃逸的情形有:
 
 1. 函数返回变量地址，或返回包含变量地址的struct，刚才已经讨论过
 2. 将变量地址写入channel或sync.Pool，编译器无法获悉其它goroutine如何使用这个变量，也就无法在编译时决议变量的生命周期
@@ -295,7 +299,47 @@ func example() {
 
 当slice元素为interface时，情况和s2类似，interface{}本质为引用语义，即为typ + pointer，这个pointer指向实际的data，参考我之前写的[go interface实现](https://wudaijun.com/2018/01/go-interface-implement/)。interface的pointer总是指针(不会类似Erlang Term一样对立即数进行优化，就地存储)，因此执行`s3[3] = c`时，本质会新分配一个对应空间，然后拷贝值，最后让pointer指向它。不让这个int值直接逃逸的原因是，执行该赋值后，本质上c和s3[3]是相互独立的，s3[3]为一个只读的int，而c的值是可以随时变化的，不应该相互影响，因此不能直接引用c的地址。虽然没有立即数优化，但是Go1.15之后，对小整数转interface{}进行了优化，也算聊胜于无。
 
-Golang一直在做interface相关的优化，如Go1.10开始提出的[devirtualization](https://github.com/golang/go/issues/19361)，编译器在能够知晓Interface具体对象的情况下(如`var i Iface = &myStruct{}`)，可以直接生成对象相关代码调用(通过插入类型断言)，而无需走Interface方法查找，同时助力逃逸分析。devirtualization还在不断完善(最初会导致receiver和参数逃逸，[这里](https://github.com/golang/go/issues/33160#issuecomment-512653356)有讨论，该问题20年底已经[Fix](https://go-review.googlesource.com/c/go/+/264837/5))。Go1.15的[staticuint64s预分配优化](https://github.com/golang/go/blob/dev.boringcrypto.go1.15/src/runtime/iface.go#L532)避免了小整数转换为interface{}的内存分配。目前Go的逃逸分析策略还相对保守，比如前面代码的s2，既slice变量本身没有逃逸，也没有发生扩容，那么让slice以及其元素都在栈上应该是安全的。当然，好的逃逸分析需要在编译期更深入地理解程序，这本身也是在保证安全的前提下循序渐进的。
+Go官方一直在做interface逃逸相关的优化:
+
+Go1.10开始提出的[devirtualization](https://github.com/golang/go/issues/19361)，编译器在能够知晓Interface具体对象的情况下(如`var i Iface = &myStruct{}`)，可以直接生成对象相关代码调用(通过插入类型断言)，而无需走Interface方法查找，同时助力逃逸分析。devirtualization还在不断完善(最初会导致receiver和参数逃逸，[这里](https://github.com/golang/go/issues/33160#issuecomment-512653356)有讨论，该问题2020年底已经在Go1.16中[Fix](https://go-review.googlesource.com/c/go/+/264837/5))。
+
+Go1.15的[staticuint64s预分配优化](https://github.com/golang/go/blob/dev.boringcrypto.go1.15/src/runtime/iface.go#L532)避免了小整数转换为interface{}的内存分配。目前Go的逃逸分析策略还相对保守，比如前面代码的s2，既slice变量本身没有逃逸，也没有发生扩容，那么让slice以及其元素都在栈上应该是安全的。当然，好的逃逸分析需要在编译期更深入地理解程序，这本身也是在保证安全的前提下循序渐进的。
+
+整体来说，目前的逃逸分析还在逐渐完善，还远没到真正成熟的地步，比如strings.Builder的源码:
+
+```
+// noescape hides a pointer from escape analysis.  noescape is
+// the identity function but escape analysis doesn't think the
+// output depends on the input. noescape is inlined and currently
+// compiles down to zero instructions.
+// USE CAREFULLY!
+// This was copied from the runtime; see issues 23382 and 7921.
+//go:nosplit
+//go:nocheckptr
+func noescape(p unsafe.Pointer) unsafe.Pointer {
+	x := uintptr(p)
+	return unsafe.Pointer(x ^ 0)
+}
+
+func (b *Builder) copyCheck() {
+	if b.addr == nil {
+		// This hack works around a failing of Go's escape analysis
+		// that was causing b to escape and be heap allocated.
+		// See issue 23382.
+		// TODO: once issue 7921 is fixed, this should be reverted to
+		// just "b.addr = b".
+		b.addr = (*Builder)(noescape(unsafe.Pointer(b)))
+	} else if b.addr != b {
+		panic("strings: illegal use of non-zero Builder copied by value")
+	}
+}
+```
+
+noescape通过一个无用的位运算，切断了逃逸分析对指针的追踪(解除了参数与返回值的关联)，noescape被大量应用到Go Runtime源码中。
+
+另一个饱受诟病的就是fmt.Printf系列(包括logrus.Debugf等所有带`...interface{}`参数的函数)，它也很容易导致逃逸，原理前面已经提过，`...interface{}`是`[]interface{}`的语法糖，逃逸分析不能确定`args []interface{}`切片是否会在函数中扩容，因此它要保证切片中的内容拷贝到堆上是安全的，那么就要保证切片元素不能引用栈内存，因此interface{}中的pointer只能指向堆内存。
+
+虽然noescape能解决部分问题，但不建议轻易使用，除非是明确性能瓶颈的场景。
 
 ### 2. 内联
 
@@ -320,7 +364,7 @@ Go1.9开始对内联做了比较大的运行时优化，开始支持[mid-stack i
 
 我们目前还没有调整过内联参数，因为这是有利有弊的，过于激进的内联会导致生成的二进制文件更大，CPU instruction cache miss也可能会增加。默认等级的内联大部分时候都工作得很好并且稳定。
 
-到目前(Go1.16)为止，虽然对Interface方法的调用还不能被内联(即使编译器知晓具体类型)，但由于:
+到Go1.17为止，虽然对Interface方法的调用还不能被内联(即使编译器知晓具体类型)，但是由于devirtualization优化的存在，已经和直接调用方法性能差距不大:
 
 ```go
 type I interface {
@@ -340,13 +384,15 @@ func BenchmarkX(b *testing.B) {
 		// F() 会被内联 0.36 ns/op
 		// var a = &A{}
 		// a.F()
-		// 对Interface的方法调用不能被内联 18.4 ns/op
+		
+		// before go1.16 接口方法的receiver &A{}会逃逸 18.4 ns/op
+		// go1.16+ &A{}不再逃逸 2.51 ns/op
 		var iface I = &A{}
 		iface.F()
 	}
 }
 ```
 
-对于一些底层基础的结构体，比如我们地图上的实体基础信息Entity，包含ID，坐标，碰撞半径等最基础的信息，我们为其抽象了一个接口IEntity，它只提供简单的对字段的访问和设置，最近再考虑将IEntity去掉，直接用Struct，借助于内联，字段访问会快一个数量级。
+针对目前Go Interface 内联做得不够好的情况，一个实践是，在性能敏感场景，让你的公用API返回具体类型而非Interface，如`etcdclient.New`，`grpc.NewServer`等都是如此实践的，它们通过私有字段加公开方法让外部用起来像Interface一样，但数据逻辑层可能实践起来会有一些难度，因为Go的访问控制太弱了...
 
-另外，针对目前Go Interface 内联做得不够好的情况，一个比较好的实践是，让你的公用API返回具体类型而非Interface，如`etcdclient.New`，`grpc.NewServer`等都是如此实践的，它们通过私有字段加公开方法让外部用起来像Interface一样，但数据逻辑层可能实践起来会有一些难度，因为Go的访问控制太弱了...
+总的来说，golang 的 GC，内联，逃逸仍然在不断优化和完善，关注和升级最新golang版本，可能是最廉价的性能提升方式。
