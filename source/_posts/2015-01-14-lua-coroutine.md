@@ -53,8 +53,12 @@ cfun(p)
 socket = require "socket"
 
 -- 下载文件 在超时时挂起(返回: 连接c) 在接收完成时结束协程(返回: nil)
+socket = require "socket"
+
+-- 下载文件 在超时时挂起(返回: 连接c) 在接收完成时结束协程(返回: nil)
 function download(host, file)
-	local c = assert(socket.connect(host, 80))
+	local c, err = assert(socket.connect(host, 80))
+	if err then print("-- connect host", file, "error: ", err) end
 	local count = 0
 	c:send("GET ".. file .. " HTTP/1.0\r\n\r\n")
 	while true do
@@ -104,20 +108,17 @@ function dispatcher()
 				table.insert(conns, c)
 			end
 		end
-		if #conns == n then
+		if #conns > 0 then
 			socket.select(conns)
 		end
 	end
 end
 
 get("www.baidu.com", "/index.html")
-get("wudaijun.com", "/2014/12/shared_ptr-reference/")
-get("wudaijun.com", "/2014/11/cpp-constructor/")
+get("tieba.baidu.com", "/index.html")
+get("news.baidu.com", "/index.html")
 
-local start = os.time()
 dispatcher()
-local cost = os.time()-start
-print("-- cost time: ", cost)
 ```
 
 

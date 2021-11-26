@@ -360,7 +360,7 @@ func foo() {
 
 `NewCoord`这类简单的构造函数都会导致返回值分配在堆上，抽离函数的代价也更大。因此Go的内联，逃逸分析，GC是名副其实的三剑客，它们共同将其它语言避之不及的指针变得"物美价廉"。
 
-Go1.9开始对内联做了比较大的运行时优化，开始支持[mid-stack inline](https://go.googlesource.com/proposal/+/master/design/19348-midstack-inlining.md)，talk链接在[这里](https://docs.google.com/presentation/d/1Wcblp3jpfeKwA0Y4FOmj63PW52M_qmNqlQkNaLj0P5o/edit#slide=id.g1d00ad65a7_2_17)。并且支持通过`-l`编译参数指定内联等级(参数定义参考[cmd/compile/internal/gc/inl.go](https://github.com/golang/go/blob/71a6a44428feb844b9dd3c4c8e16be8dee2fd8fa/src/cmd/compile/internal/gc/inl.go#L10-L17))。并且只在`-l=4`中提供了mid-stack inline，据Go官方统计，这大概可以提升9%的性能，也增加了11%左右的二进制大小。Go1.12开始默认支持了mid-stack inline。
+Go1.11开始对内联做了比较大的运行时优化，开始支持[mid-stack inline](https://go.googlesource.com/proposal/+/master/design/19348-midstack-inlining.md)，talk链接在[这里](https://docs.google.com/presentation/d/1Wcblp3jpfeKwA0Y4FOmj63PW52M_qmNqlQkNaLj0P5o/edit#slide=id.g1d00ad65a7_2_17)。并且支持通过`-l`编译参数指定内联等级(参数定义参考[cmd/compile/internal/gc/inl.go](https://github.com/golang/go/blob/71a6a44428feb844b9dd3c4c8e16be8dee2fd8fa/src/cmd/compile/internal/gc/inl.go#L10-L17))。并且只在`-l=4`中提供了mid-stack inline，据Go官方统计，这大概可以提升9%的性能，也增加了11%左右的二进制大小。Go1.12开始默认支持了mid-stack inline。Go1.17中，包含闭包的函数也可以被内联了。
 
 我们目前还没有调整过内联参数，因为这是有利有弊的，过于激进的内联会导致生成的二进制文件更大，CPU instruction cache miss也可能会增加。默认等级的内联大部分时候都工作得很好并且稳定。
 
@@ -386,7 +386,7 @@ func BenchmarkX(b *testing.B) {
 		// a.F()
 		
 		// before go1.16 接口方法的receiver &A{}会逃逸 18.4 ns/op
-		// go1.16+ &A{}不再逃逸 2.51 ns/op
+		// go1.16+ &A{}不再逃逸 2.51 ns/op 消耗主要在方法调用和接口方法查找上
 		var iface I = &A{}
 		iface.F()
 	}
