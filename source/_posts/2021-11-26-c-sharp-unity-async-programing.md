@@ -412,7 +412,7 @@ public class SimpleCoroutineAwaiter : INotifyCompletion
 
 ### 一点体会
 
-我只能算是个C#和Unity的门外汉，只是谈谈自己的体会，异步编程尤其是并发编程从来都不是一件简单的事，无论它看起来多么"简洁优雅"。C#从Thread/ThreadPool，到Task/TaskFactory/TaskScheduler，再到async/await，异步编程模型一直在演进，看起来越来越简单，可读性越来越"高"，但代价是编译器和运行时做了更多的工作(这些工作是作为开发者必须要了解的)，同时理解底层也越来越难:
+首先我是个C#和Unity的门外汉，只是谈谈自己的体会，异步编程尤其是并发编程从来都不是一件简单的事，无论它看起来多么"简洁优雅"。C#从Thread/ThreadPool，到Task/TaskFactory/TaskScheduler，再到async/await，异步编程模型一直在演进，看起来越来越简单，可读性越来越"高"，但代价是编译器和运行时做了更多的工作(这些工作是作为开发者必须要了解的)，同时理解底层也越来越难:
 
 1. async/await这一套，如C语言的goto，都打破了函数封装的约束(所谓无栈编程？)，为深入理解代码行为带来了一定负担
 2. 同样一段代码，在不同的线程上运行，可能获得完全不一样的效果(SynchronizationContext和ExecuteContext不同)
