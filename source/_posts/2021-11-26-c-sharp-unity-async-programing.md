@@ -296,7 +296,7 @@ yield和await都是语法糖，最后都会被生成一个状态机，每行yiel
 
 ##### async/await是Task+状态机的语法糖
 
-从实现机制上来说，这句话没有问题，但要更细致地看，一方面，async函数在经过编译器处理后，最终返回给调用方的，是builder中的Task对象(这也是为何async方法的返回值只能是void, Task, Task<TResult>)。而另一方面，await本身不关注Task，它支持所有提供异步相关接口的对象(GetAwaiter)，这样的好处在于除了Task，它还可以集成更多来自框架(比如`.NET`已经提供的各种Async API)，甚至自定义的异步对象，已有的异步操作也可以通过适配GetAwaiter移植到新的async/await异步编程模型。
+从实现机制上来说，这句话没有问题，但要更细致地看，一方面，async函数在经过编译器处理后，最终返回给调用方的，是builder中的Task对象(这也是为何async方法的返回值只能是`void`, `Task`, `Task<TResult>`)。而另一方面，await本身不关注Task，它支持所有提供异步相关接口的对象(GetAwaiter)，这样的好处在于除了Task，它还可以集成更多来自框架(比如`.NET`已经提供的各种Async API)，甚至自定义的异步对象，已有的异步操作也可以通过适配GetAwaiter移植到新的async/await异步编程模型。
 
 ##### 出现await的地方，当前线程就会返回
 
@@ -408,7 +408,7 @@ public class SimpleCoroutineAwaiter : INotifyCompletion
 
 这个工具库还有一些有意思的小特性，比如Task到IEnumerator的转(原理就是轮询Task完成状态)，通过`await new WaitForBackgroundThread();`切换到后台线程(原理其实就是对`task.ConfigureAwait(false)`的封装)，这些在理解整个async/await，Unity协程，SynchronizationContext等内容后，都应该不难理解了。
 
-另外，这里有篇关于[Unity中async/await与coroutine的性能对比]((https://www.linkedin.com/pulse/unity-async-vs-coroutine-jo%C3%A3o-borks))，可以看看。
+另外，这里有篇关于[Unity中async/await与coroutine的性能对比](https://www.linkedin.com/pulse/unity-async-vs-coroutine-jo%C3%A3o-borks)，可以看看。
 
 ### 一点体会
 
