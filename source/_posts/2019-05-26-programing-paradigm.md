@@ -225,7 +225,7 @@ callWithOrigin的参数类型为`{x:double,y:double}->{x:double,y:double}`，现
 我们在讨论Ruby时用的subclass(子类)，而在讨论静态OOP语言时用的是subtype(子类型)，因为它们本质上不是一个东西:
 
 - subclass是通过继承来解决class之间关系和代码复用(class内部实现的复用)的问题。关注的是class实现
-- subtype关注的是type checker。它本质是为了放宽静态语言type checker的标准，让静态语言更像动态语言，达成更好地复用性(class之外的复用)和灵活性。Ruby是动态语言，它有duck typing，因此不需要subtype(它没有type，type是一种对象)。
+- subtype关注的是type checker，达成更好的语义复用性(class之外的复用)和灵活性。Ruby是动态语言，它有更为灵活的duck typing，因此不需要subtype。
 
 subtype不一定要通过subclass来实现，理论上你可以有两个完全不相关的类A和B，但他们提供一致的方法，然后你可以声明A是B的subtype。然后任何用B的地方都可以用A。type checker不care这些方法是通过继承得来的还是完全不同的。
 
