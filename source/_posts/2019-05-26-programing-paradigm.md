@@ -7,9 +7,10 @@ tags: programing
 
 这段时间学习OOP对语言和编程范式有一些新的理解，之前系统整理过[函数式编程](https://wudaijun.com/2018/05/understand-functional-programing/)，因此先从OOP谈起。我们先回顾下面向对象(OOP)的核心思想:
 
-1. 将数据及其相关操作(方法)封装起来，以对象的方式暴露出来，对象与对象之间通过方法调用(或者说是发消息)进行通信。
-2. 对象可以有自己的私有字段，只有对象的方法可以访问这些字段。
-3. 每个对象都是一个类(Class)的实例，类定义了对象的行为(内部数据和方法实现)。
+1. 所有的值都是对象
+2. 对象与对象之间通过方法调用(或者说是发消息)进行通信
+3. 对象可以有自己的私有字段/状态，只有对象的方法可以访问和更新这些字段
+4. 每个对象都是一个类(Class)的实例，类定义了对象的行为(内部数据和方法实现)
 
 与函数式的"一切皆函数"一样，OOP也有一个宏大的目标"一切皆对象"。
 
@@ -20,7 +21,7 @@ tags: programing
 动态OOP语言，以Ruby为例，它是一种"纯度比较高"的OOP语言，它有一些比较有意思的特性:
 
 1. null,3,true等都是对象，对象的类也是对象，当然也有例外，如Blocks
-2. 由于对象的类也是对象，因此你可以动态更改类的定义，如添加新方法，如何更改对象一样
+2. 由于对象的类也是对象(类型为Class)，因此你可以像更改对象一样动态更改类的定义，如添加新方法
 3. 对象与对象之间只能通过方法通信，即对象不能直接访问其它对象的字段
 
 #### subclass
@@ -43,15 +44,15 @@ class Point
 end
 ```
 
-现在我们要创建一个ColorPoint类，它除了多个Color字段外，其它属性和行为与Point一模一样，这个时候我们有如下三种做法:
+现在我们要创建一个ColorPoint类，它除了多个Color字段外，其它属性和行为与Point一模一样，这个时候我们有以下几种做法:
 
 1. 在ColorPoint类定义中，将Point相关的代码拷贝过来或重写，ColorPoint成为了与Point不相关的两个类
 2. 在ColorPoint类中定义一个Point类的成员，然后将distFromOrigin和distFromOrigin2等方法都转调(forwarding)到该成员上
 3. 通过将ColorPoint声明为Point的子类(subclass)，这样ColorPoint就继承Point的所有属性和方法，并且仍然可以自己扩展属性，覆盖或新增方法
     
-以上三种实现方式导致的ColorPoint和Point耦合度依次递增，在大多数场景下，该问题的最佳方案应该是方案3，因为它能够最大程度达成代码复用。ColorPoint可以在Point上添加Color字段并实现自己的构造函数。
+以上三种实现方式导致的ColorPoint和Point耦合度依次递增，在大多数场景下，该问题的最佳方案应该是方案3，因为它能够最大程度达成代码复用，并且在此例子，ColorPoint "is-a" Point。
 
-在OOP中，subclass通常是很容易被滥用的，比如我们现在要实现一个Point3D类，它多了个z属性，那么它的`distFromOrigin`和`distFromOrigin2`都需要override，它真正能够复用的只有`x`，`y`两个存取器，这个时候就会有一些争议(复用程度太低，是否应该使用subclass)，特别是如果Point还有个方法`distance(p)`，用于求出两点距离时，此时ColorPoint需要override该方法，并且参数为ColorPoint，此时将Point对象传给ColorPoint的distance将得到运行时错误。因此在用subclass时，需要谨慎评估类之间的关系，以及类扩展和重写带来的影响。
+但是，在OOP中，subclass通常是很容易被过度使用，比如我们现在要实现一个Point3D类，它多了个z属性，那么它的`distFromOrigin`和`distFromOrigin2`都需要override，它真正能够复用的只有`x`，`y`两个存取器，这个时候就会有一些争议(复用程度太低)，特别是如果Point还有个方法`distance(p)`，用于求出两点距离时，此时Point3D需要override该方法，并且参数为Point3D，此时将Point对象传给Point3D的distance将得到运行时错误。因此在用subclass时，需要谨慎评估类之间的关系，以及类扩展和重写带来的影响。
 
 #### duck typing
 
@@ -224,22 +225,22 @@ callWithOrigin的参数类型为`{x:double,y:double}->{x:double,y:double}`，现
 
 我们在讨论Ruby时用的subclass(子类)，而在讨论静态OOP语言时用的是subtype(子类型)，因为它们本质上不是一个东西:
 
-- subclass是通过继承来解决class之间关系和代码复用(class内部实现的复用)的问题。关注的是class实现
-- subtype关注的是type checker，达成更好的语义复用性(class之外的复用)和灵活性。Ruby是动态语言，它有更为灵活的duck typing，因此不需要subtype。
+- class定义对象的全部行为，subclass是通过继承来解决class与class之间**代码复用**的问题，子类可以通过重写(override)或扩展(extension)来完善自己的行为
+- type关注对象的部分对外接口(字段or方法)，subtype用于定义类型之间**可替换关系**，关注type checker和语义复用
 
-subtype不一定要通过subclass来实现，理论上你可以有两个完全不相关的类A和B，但他们提供一致的方法，然后你可以声明A是B的subtype。然后任何用B的地方都可以用A。type checker不care这些方法是通过继承得来的还是完全不同的。
+Ruby是动态语言，它有更为灵活的duck typing，因此不需要subtype。对静态语言而言，subtype不一定要通过subclass来实现，理论上你可以有两个完全不相关的类A和B，但他们提供一致的方法，然后你可以声明A是B的subtype。然后任何用B的地方都可以用A。subtype不care这些方法是通过继承得来的还是独立实现的。
 
 但在大多数静态OOP语言，如Java/C#/C++中，type和class的边界很模糊，绝大多数时候，你可以认为它们是一个东西，这是因为这些语言主要依赖subclass来实现subtype，因此当你创建一个class时，相当于创建了一个type，它的名字和class名字一样，当你声明subclass关系时，也声明了subtype关系。
 
 另一点是我们在虚拟语言中以record作为对象的type，这个record可以包含字段，方法等，然后这个record的字段还可以修改，而实际上大多数静态OOP语言中，方法字段是不能修改的，比如你不能拿到一个对象，然后修改它的某个方法，因为方法实现是属于类而不是对象的。
 
-理解了以上两点，现在我们可以将前面讨论的模型放到实际OOP语言中:
+理解了以上两点，我们就能将虚拟语言与现实世界的OOP语言映射起来了，如C++:
 
 1. type和class大部分时候是一个东西，声明一个class也就声明了一个type
 2. subclass可以基于superclass之上添加字段/方法但是不能移除已有字段/方法
 3. subclass可以override superclass的方法
 
-为了阐述方便，以下不再严格区分静态OOP语言中的subclass/subtype。
+为了阐述方便，以下探讨C++/Java这类主流编程语言时，不再严格区分subclass和subtype的概念。
 
 #### dynamic dispath
 
