@@ -1,5 +1,5 @@
 ---
-title: 编程语言思维导图
+title: 编程语言杂记
 layout: post
 categories: mindmap
 tags: mindmap

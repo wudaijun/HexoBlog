@@ -1,5 +1,5 @@
 ---
-title: 关于软件设计的一些总结
+title: 软件设计的一些理解
 layout: post
 categories: mindmap
 tags: programing
