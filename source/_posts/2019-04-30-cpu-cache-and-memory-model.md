@@ -84,7 +84,7 @@ Writeback: 写回消息，即将状态为Modified的行写回到内存，通常�
 
 ![](/assets/image/201904/mesi-example.png)
 
-上图第一行代表操作发生的时序，第二行是执行操作的CPU，第三行是CPU执行的操作，后面四行是各个CPU的Cache Line状态，最后两行是地址0和地址8在内存中的数据是是最新的(V)还是过期的(I)。初始状态下，每个CPU Cache Line都是未填充(Invalid)的。
+上图第一列代表操作发生的时序，第二列是执行操作的CPU，第三列是CPU执行的操作，后面四列是各个CPU的Cache Line状态，最后两列是地址0和地址8在内存中的数据是是最新的(V)还是过期的(I)。初始状态下，每个CPU Cache Line都是未填充(Invalid)的。
 
 1. CPU0 加载地址0x0的数据，发送Read消息，对应Cache Line被标记为Shared
 2. CPU3 加载地址0x0的数据，同样，Cache Line标记为Shared
