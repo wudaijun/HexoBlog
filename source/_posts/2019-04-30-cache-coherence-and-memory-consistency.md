@@ -1,5 +1,5 @@
 ---
-title: Cache一致性和内存模型
+title: Cache一致性和内存一致性
 layout: post
 categories: os
 tags: os
@@ -56,9 +56,16 @@ So，现代OS的操作系统是取两者折中，即组相连结构: 将若干Ca
 
 通用的Cache映射策略，将目标地址分为t(标记位)，s(组索引)，b(块偏移)三个部分。我在[Linux Perf 简单试用](http://wudaijun.com/2019/04/linux-perf/)中也有例子说明程序局部性对效率的影响。
 
-### Cache Coherency
+### Cache Coherence
 
-前面我们谈的主要是Cache的映射策略，Cache设计的最大难点其实在于Cache一致性: 即所有CPU看到的指定地址的值是一致的。比如在CPU尝试修改某个地址值时，其它CPU可能已有该地址的缓存，甚至可能也在执行修改操作。因此该CPU需要先征求其它CPU的"同意"，才能执行操作。这需要给各个CPU的Cache Line加一些标记(状态)，辅以CPU之间的通信机制(事件)来完成， 这可以通过MESI协议来完成。MESI是以下四个状态的简称:
+前面我们谈的主要是Cache的映射策略，Cache设计的最大难点其实在于Cache一致性: 
+
+1. 任何CPU所发出的访存操作被存储器所观察到的顺序必须与CPU发出操作的顺序相同
+2. 每个读操作所返回的值必须是最后一次对该存储位置的写操作的值
+
+以上两点，也可以理解为，如何在多层级(L1、L2、L3)，多核(每个核有自己的局部L1、L2缓存)的共享内存存储系统中，保持缓存的透明性，即对CPU而言，对内存地址的访问就像没有缓存系统一样。
+
+举个例子，某CPU尝试修改某个地址值时，其它CPU可能已有该地址的缓存，甚至可能也在执行修改操作。因此该CPU需要先征求其它CPU的"同意"，才能执行写操作。这需要给各个CPU的Cache Line加一些标记(状态)，辅以CPU之间的通信机制(事件)来完成， 这可以通过MESI协议来完成。MESI是以下四个状态的简称:
 
 M(modified): 该行刚被 CPU 改过，并且保证不会出现在其它CPU的Cache Line中。即CPU是该行的所有者。CPU持有该行的唯一正确参照。
 E(exclusive): 和M类似，但是未被修改，即和内存是一致的，CPU可直接对该行执行修改(修改之后为modified状态)。
@@ -322,16 +329,23 @@ mutex_unlock(a);
 
 由于mutex任意时刻只能被一个线程占有，因此A线程拿到mutex必然在B线程释放mutex之后，由于内存屏障的存在，`mutex_lock`和`mutex_unlock`之间的指令只能在mutex里面(无法越过mutex)，并且A线程能即时看到B线程mutex中作出的更改。
 
-注意，这里列举的volatile, atomic, mutex的具体实现和语义可能在不同的语言甚至同种语言不同的编译平台中有所区别(如C++不同的VS版本对volatile关键字的内存屏障使用有所区别)。对开发者而言，编写并发程序需要关注三个东西: 原子性，可见性和顺序性。
+注意，这里列举的volatile, atomic, mutex的具体实现和语义可能在不同的语言甚至同种语言不同的编译平台中有所区别(如C++不同的VS版本对volatile关键字的内存屏障使用有所区别)。对开发者而言，编写并发程序需要理解三个东西: 原子性，可见性和顺序性。
 
 - 原子性: 尽管在如今大部分平台下，对一个字的数据进行存取(int,指针)的操作本身就是原子性的，但为了更好地跨平台性，通过atomic操作来实现原子性是更好的方法，并且不会造成额外的开销。C++的atomic还提供可见性和顺序性选项
-- 可见性: 数据同步相关，前面讨论的CPU Cache设计主要关注的就是可见性，即同一时刻所有CPU看到的某个地址上的值是一致的。Cache一致性主要解决的就是数据可见性的问题
-- 顺序性: 内存屏障的另一个功能就是可以限制局部的指令重排(一些文章将内存屏障定义为限制指令重排工具，我认为是不准确的，如前面所讨论的，即使没有指令重排，有时也需要内存屏障来保证可见性)。内存屏障保证屏障前的某些操作必定限于屏障后的操作**发生且可见**。但屏障前或屏障后的指令，CPU/编译器仍然可以在不改变单线程结果的情况下进行局部重排。每个硬件平台有自己的基础顺序性(强/弱内存模型)
+- 可见性: 数据同步相关，前面讨论的CPU Cache设计主要关注的就是可见性，即每个读操作所返回的值必须是最后一次对该存储位置的写操作的值。Cache一致性主要解决的就是数据可见性的问题
+- 顺序性: 内存屏障的另一个功能就是可以限制局部的指令重排(一些文章将内存屏障定义为限制指令重排工具，我认为是不准确的，如前面所讨论的，即使没有指令重排，有时也需要内存屏障来保证可见性)。内存屏障保证屏障前的某些操作必定限于屏障后的操作**发生且可见**。但屏障前或屏障后的指令，CPU/编译器仍然可以在不改变单线程结果的情况下进行局部重排。每个硬件平台有自己的基础内存一致性(强/弱内存模型)
 
+### Memory Consistency
 
-### Weak/Strong Memory Models
+有了前面的讨论，我们可以引出内存一致性的概念了，前面讨论的Cache一致性，内存屏障，指令重排，乱序执行等，都属于内存一致性的范畴。内存一致性也叫做内存模型(Memory Model)或内存一致性模型(Memory Consistency Model)，内存一致性模型规定了程序员和系统之间的契约，其中系统保证，如果程序员遵循内存操作规则，内存将是一致的，读取、写入或更新内存的结果将是可预测的。
 
-不同的处理器平台，本身的内存模型有强(Strong)弱(Weak)之分。
+Cache一致性(Conherence)和内存一致性(Consistency)中的"一致性"意义是不一样的，前者关注多个CPU对同一内存地址的读写预期，后者关注多个CPU对所有内存地址的读写预期。事实上，Cache一致性的另一种定义([From WIKI](https://en.wikipedia.org/wiki/Cache_coherence))就是基于顺序一致性内存模型的:
+
+缓存一致性系统必须以遵循每个线程的程序顺序的总顺序来执行所有线程的加载和存储到单个内存位置。缓存一致系统和顺序一致系统之间的唯一区别是地址位置的数量(缓存一致系统的单个内存位置，顺序一致系统的所有内存位置)。因此可以说Cache一致性是内存一致性的一部分。
+
+PS: 前面讨论的Cache Coherence(MESI，StoreBuffer, InvalidQueue)本质是满足多个CPU对单个内存地址读写的顺序一致性的。之所以会用到内存屏障，是因为那是针对多个内存地址有关联的情况，这属于Memory Consistency考虑的范畴。
+
+以下是几种常见的内存一致性模型:
 
 - `Weak Memory Model`: 如DEC Alpha是弱内存模型，它可能经历所有的四种内存乱序(LoadLoad, LoadStore, StoreLoad, StoreStore)，任何Load和Store操作都能与任何其它的Load或Store操作乱序，只要其不改变单线程的行为。
 - `Weak With Date Dependency Ordering`: 如ARM, PowerPC, Itanium，在Aplpha的基础上，支持数据依赖排序，如C/C++中的`A->B`，它能保证加载B时，必定已经加载最新的A
@@ -344,14 +358,15 @@ mutex_unlock(a);
 
 本文比较杂乱，前面主要介绍CPU Cache结构和Cache一致性问题，引出内存屏障的概念。后面顺便简单谈了谈指令乱序和内存一致性。
 
-实际的CPU Cache结构比上面阐述的要复杂得多，其核心的优化理念都是化同步为异步，然后再去处理异步下的一致性问题(处理不了就交给开发者...)。尽管异步会带来更多的问题，但它仍然是达成高吞吐量的必经之路。硬件方面的结构优化到一定程度了，CPU/编译器就开始打应用层代码的主意: 指令重排。
+实际的CPU Cache结构比上面阐述的要复杂得多，其核心的优化理念都是化同步为异步，然后再去处理异步下的一致性问题(处理不了就交给开发者...)。尽管异步会带来一些理解和开发负担，但它仍然是达成高吞吐量的必经之路。硬件方面的结构优化到一定程度了，CPU/编译器就开始打应用层代码的主意: 如指令重排和乱序执行。
 
-对开发者来说，应用程序可以通过封装好的mutex完成大部分的并发控制，而无需关注底层用了哪些内存屏障，各平台的内存一致性等细节。但是在使用比mutex更底层的同步机制(如atomic, volatile, memory-barrier, lock-free等)时，就要务必小心。从原子性，可见性，顺序性等方面确保代码执行结果如预期。
+对开发者来说，想要完整掌握和理解内存一致性是非常困难的，其中包括系统架构、语言、编译器等多个层面的实现细节，以及不同语言版本和系统架构之间的差异。实践中，应用程序可以通过封装好的mutex完成大部分的并发控制，而无需关注内存一致性实现细节和不同平台的差异。但是在使用比mutex更底层的同步机制(如atomic, volatile, memory-barrier, lock-free等)时，就要务必小心。从原子性，可见性，顺序性等方面确保代码执行结果如预期。
 
 ### References
 
-1. [一致性杂谈](http://wudaijun.com/2018/09/distributed-consistency/)
-2. [Memory Barriers: a Hardware View for Software Hackers](http://irl.cs.ucla.edu/~yingdi/web/paperreading/whymb.2010.06.07c.pdf)
-3. [Weak vs. Strong Memory Models](https://preshing.com/20120930/weak-vs-strong-memory-models/)
-4. [Acquire and Release Semantics](https://preshing.com/20120913/acquire-and-release-semantics/)
-5. [如何理解 C++11 的六种 memory order？](https://www.zhihu.com/question/24301047)
+1. [Memory Barriers: a Hardware View for Software Hackers](http://www.rdrop.com/~paulmck/scalability/paper/whymb.2010.06.07c.pdf)
+2. [为什么程序员需要关心顺序一致性而不是Cache一致性？](http://www.parallellabs.com/2010/03/06/why-should-programmer-care-about-sequential-consistency-rather-than-cache-coherence/)
+3. [浅谈Memory Reordering](http://dreamrunner.org/blog/2014/06/28/qian-tan-memory-reordering/)
+4. [聊聊原子变量、锁、内存屏障那点事](http://0xffffff.org/2017/02/21/40-atomic-variable-mutex-and-memory-barrier/)
+5. [Acquire and Release Semantics](https://preshing.com/20120913/acquire-and-release-semantics/)
+6. [一致性杂谈](https://wudaijun.com/2018/09/consistency/)
