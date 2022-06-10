@@ -20,6 +20,8 @@ tags: distributed
 
 从另一个角度来说，共识算法可以理解为达成一致的一种算法手段。类似的，区块链中非常重要的一部分也是共识算法，但通常使用是 POW(Proof of Work) 或 POS(Proof of Stake)，这类共识算法通常适合用在公网，去中心化的情形下。
 
+<!--more-->
+
 #### ACID Consistency
 
 ACID 中的C指代Consistency or Correctness(From [WIKI](https://en.wikipedia.org/wiki/ACID#Consistency_(Correctness)))，但通常被译作事务的一致性，主流理解这里的一致性是指数据库的一致性约束，包括唯一键、外键约束，级联，触发器等。在事务开始之前和事务结束以后，都必须遵守这些不变量，保证**数据库**的一致性状态不被破坏。即ACID是数据为支持事务提供的四种正交的机制支撑。
