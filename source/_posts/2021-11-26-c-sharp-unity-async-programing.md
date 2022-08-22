@@ -157,9 +157,9 @@ static void Main(string[] args) {
 
 类比Actor模型，我们要实现 Actor A 向 Actor B 通信，我们需要: 
 
-- 1. 定义一个消息通道: channel/mailbox
-- 2. 集成channel/mailbox到B消息泵
-- 3. 将channel/mailbox暴露给A
+1. 定义一个消息通道: channel/mailbox
+2. 集成channel/mailbox到B消息泵
+3. 将channel/mailbox暴露给A
 
 因此，上例中，我们即没有定义消息的传输方式，也没有定义消息的处理方式。SynchronizationContext本质只是提供了一层同步上下文切换交互抽象，传输方式，消息泵，甚至线程模型都需要我们自己实现。这里就不再展示SynchronizationContext的扩展细节，更多关于SynchronizationContext的文档:
 
@@ -228,7 +228,7 @@ public static async Task<int> F2Async()
 
 // 该方法在Task上套了一层空格子Task，看起来好像和F1Async没区别
 // 但实际上，编译器仍然会生成对应的builder和wrapper task，这个wrapper task在原task完成之后，只是做了简单的return操作
-// 因此 await F3Async() 实际上可能导致两次线程上下文切换，如果是在UI线程上执行await，用法不当则可能解锁"async/await 经典UI线程卡死"隐藏关卡，因为await会默认捕获SynchronizationContext。这个后面说。
+// 因此 await F3Async() 实际上可能导致两次线程上下文切换，如果是在UI线程上执行await，用法不当则可能触发"async/await 经典UI线程卡死"场景，因为await会默认捕获SynchronizationContext。这个后面说。
 public static async Task<int> F3Async()
 {
     return await Task.Run(() => { return 2; });
@@ -248,9 +248,8 @@ public static async Task<int> F3Async()
 }
 public static async void AsyncTask()
 {
+	 // 创建并使用自定义的SynchronizationContext
     var context = new MySynchronizationContext();
-    // 如果创建的不是自定义的，而是默认的SynchronizationContext，输出对应下面的Output2
-    // var context = new MySynchronizationContext();
     SynchronizationContext.SetSynchronizationContext(context);
     Console.WriteLine("AsyncTask: before await, thread{0}", Thread.CurrentThread.ManagedThreadId);
     var a = await Task.Run(() =>
@@ -266,19 +265,19 @@ static void Main(string[] args)
     AsyncTask();
     Console.ReadKey();
 }
-// Output:
+// Output (使用自定义的SynchronizationContext):
 // AsyncTask: before await, thread1
 // AsyncTask: in task, thread3
 // MySynchronizationContext Post, thread3
 // AsyncTask: after await, got result: 666, thread4
 
-// Output2:
+// Output2 (使用默认的SynchronizationContext):
 // AsyncTask: before await, thread1
 // AsyncTask: in task, thread3
 // AsyncTask: after await, got result: 666, thread3
 ```
 
-这说明了如果当前线程没有或者设置的默认的SynchronizationContex，那么await之后的回调委托实际上是在await的Task所在的线程上执行的(这一点和ContinueWith的默认行为不大一样，后者总是会通过QueueWorkItem)跑在一个新的线程中。
+这说明了如果当前线程没有或者设置的默认的SynchronizationContex，那么await之后的回调委托实际上是在await的Task所在的线程上执行的(这一点和ContinueWith的默认行为不大一样，后者总是会通过QueueWorkItem跑在一个新的线程中)。
 
 如果设置了非默认的SynchronizationContex，那么回调委托将通过`SynchronizationContex.Post`方法封送(由于SynchronizationContex本质也只是接口，我们这里并不能草率地说，会回到Caller线程)。如对于WPF这类UI框架而言，它实现的`DispatcherSynchronizationContext`最终通过`Dispatcher.BeginInvoke`将委托封送到UI线程。而如果你是在UI线程发起await，其后又在UI线程上使用`task.Result`同步等待执行结果，就可能解锁前面F3Async中提到的[UI线程卡死场景](https://zhuanlan.zhihu.com/p/371362645)，这也是新手最常犯的问题。你可以通过`task.ConfigureAwait(bool continueOnCapturedContext)`指定false来关闭指定Task捕获SynchronizationContex的能力，如此委托回调的执行线程就和没有SynchronizationContex类似了。
 

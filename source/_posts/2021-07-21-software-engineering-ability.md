@@ -1,5 +1,5 @@
 ---
-title: 软件工程能力思维导图
+title: 软件工程能力
 layout: post
 categories: mindmap
 tags: engineer
