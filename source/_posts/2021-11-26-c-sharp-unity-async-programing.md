@@ -52,7 +52,7 @@ static void Main(string[] args)
 C#没有协程，我们经常听到或看到C#协程的概念，主要来自于Unity，它对yield做了一些改造:
 
 1. 基于yield返回的对象，只能是YieldInstruction的子类(它最重要的方法是bool IsDone()，用于判断当前任务是否已经完成)
-2. 默认实现了部分预定义的YieldInstruction，如WaitForSeconds，null，WaitForEndOfFrame等，以实现常用的协程控制(告诉Unity协程的唤醒时机)
+2. 默认实现了部分预定义的YieldInstruction，如Seconds，null，WaitForEndOfFrame等，以实现常用的协程控制(告诉Unity协程的唤醒时机)
 2. Unity Runtime会根据返回的YieldInstruction对象类型，在合适(IsDone()==true)的时候唤醒协程(无需显示MoveNext)
 3. 支持协程嵌套
 5. 简单的协程生命周期管理(提供StopCoroutine接口)，并将协程的生命周期与GmaeObject绑定
@@ -202,8 +202,8 @@ Main: after AsyncTask result: 667 thread1
 在进一步了解它的用法之前，我们先大概了解下它的实现机制(可以看看[这篇文章](https://zhuanlan.zhihu.com/p/197335532)提到了不少实现细节)，async/await本质也是编译器的语法糖，编译器做了以下事情:
 
 1. 为所有带async关键字的函数，生成一个状态机类，它满足IAsyncStateMachine接口，await关键字本质生成了状态机类中的一个状态，状态机会根据内部的state字段(通常-1表示开始，-2表示结束，其他状态依次为0,1,2...)，一步步执行异步委托。整个状态机由`IAsyncStateMachine.MoveNext`方法驱动，类似迭代器
-2. 代码中的`await xxx`，xxx返回的对象都需要实现GetAwaiter方法，该方法返回一个Awaiter对象，编译器不关心这个对象Awaiter对象类型，它只关心这个Awaiter对象需要满足三个条件: a. 实现INotifyCompletion，b. 实现IsCompleted属性，c. 实现GetResult方法，如此编译器就能知道如何与该异步操作进行交互，比如最常见的Task对象，就实现了GetAwaiter方法返回一个TaskAwaiter对象，但除了TaskAwaiter，任何满足以上三个条件的对象均可被await
-3. 有了stateMachine和TaskAwaiter之后，还需要一个工具类将它们组合起来，以驱动状态机的推进，这个类就是`AsyncTaskMethodBuilder/AsyncTaskMethodBuilder<TResult>`，是Runtime预定义好的，每个async方法，都会创建一个Builder对象，然后通过[AsyncTaskMethodBuilder.Start](https://referencesource.microsoft.com/#mscorlib/system/runtime/compilerservices/AsyncMethodBuilder.cs,67)方法绑定对应的IAsyncStateMachine，并进行状态首次MoveNext驱动，MoveNext执行到await处(此时实际上await已经被编译器去掉了，只有TaskAwaiter)，会调用`TaskAwaiter.IsCompleted`判断任务是否已经立即完成(如`Task.FromResult(2)`)，如果已完成，则将结果设置到builder(此时仍然在当前线程上下文)，并之后跳转到之后的代码(直接goto，无需MoveNext)，否则，更新state状态，通过[AsyncTaskMethodBuilder.AwaitUnsafeOnCompleted](https://referencesource.microsoft.com/#mscorlib/system/runtime/compilerservices/AsyncMethodBuilder.cs,154)挂接异步回调并返回(此时当前线程已经让出控制权)，当taskAwaiter完成后，buildier会再次调用`stateMachine.MoveNext`驱动状态机(此时可能已经不在当前线程，state状态也不一样了，可通过TaskAwaiter.GetResult拿到异步结果)，如此完成状态机的正常驱动。
+2. 代码中的`await xxx`，xxx返回的对象都需要实现GetAwaiter方法，该方法返回一个Awaiter对象，编译器不关心这个对象Awaiter对象类型，它只关心这个Awaiter对象需要满足三个条件: a. 实现INotifyCompletion，b. 实现IsCompleted属性，c. 实现GetResult方法，如此编译器就能知道如何与该异步操作进行交互，比如最常见的Task对象，就实现了GetAwaiter方法返回一个[TaskAwaiter](https://referencesource.microsoft.com/#mscorlib/system/threading/Tasks/Task.cs,2935)对象，但除了TaskAwaiter，任何满足以上三个条件的对象均可被await
+3. 有了stateMachine和TaskAwaiter之后，还需要一个工具类将它们组合起来，以驱动状态机的推进，这个类就是`AsyncTaskMethodBuilder/AsyncTaskMethodBuilder<TResult>`，是Runtime预定义好的，每个async方法，都会创建一个Builder对象，然后通过[AsyncTaskMethodBuilder.Start](https://referencesource.microsoft.com/#mscorlib/system/runtime/compilerservices/AsyncMethodBuilder.cs,67)方法绑定对应的IAsyncStateMachine，并进行状态首次MoveNext驱动，MoveNext执行到await处(此时实际上await已经被编译器去掉了，只有TaskAwaiter)，会调用`TaskAwaiter.IsCompleted`判断任务是否已经立即完成(如`Task.FromResult(2)`)，如果已完成，则将结果设置到builder(此时仍然在当前线程上下文)，并之后跳转到之后的代码(直接goto，无需MoveNext)，否则，更新state状态，通过[AsyncTaskMethodBuilder.AwaitUnsafeOnCompleted](https://referencesource.microsoft.com/#mscorlib/system/runtime/compilerservices/AsyncMethodBuilder.cs,154)挂接(对Task而言，本质是[挂接到Continuation](https://referencesource.microsoft.com/#mscorlib/system/runtime/compilerservices/TaskAwaiter.cs,339)上)异步回调(此回调包含整个状态机的后续驱动方式，通过[GetCompletionAction](https://referencesource.microsoft.com/#mscorlib/system/runtime/compilerservices/AsyncMethodBuilder.cs,ac92075576570beb)生成)并返回(此时当前线程已经让出控制权)，当taskAwaiter完成(不同的Awaiter完成方式也不同，对Task而言，即Task执行完成)后，buildier会通过GetCompletionAction生成的回调再次调用到`stateMachine.MoveNext`驱动状态机(此时可能已经不在当前线程，state状态也不一样了，可通过TaskAwaiter.GetResult拿到异步结果)，如此完成状态机的正常驱动。
 4. 除了驱动状态机外，AsyncTaskMethodBuilder的另一个作用是将整个async函数，封装为一个新的Task(wrapper task)，该Task可通过`AsyncTaskMethodBuilder.Task`属性获取。当stateMachine通过MoveNext走完每个状态后，会将最终结果，通过builder.SetResult写入到builder中的Task，如果中途出现异常，则通过builder.SetExpection保存，如此发起方可通过`try {await xxx;} catch (e Exception){...}`捕获异常，最终整个编译器改写后的async函数，返回的实际上就是这个`builder.Task`。
 
 #### 基础用法
@@ -304,11 +304,10 @@ yield和await都是语法糖，最后都会被生成一个状态机，每行yiel
 
 ### Unity async/await
 
-Unity也引入了C# async/await机制，以弥补自己多线程编程方面的短板:
+Unity也引入了C# async/await机制，并对其进行了适配:
 
 1. Unity本身也是UI框架，因此它实现了自己的同步上下文[UnitySynchronizationContext](https://github.com/Unity-Technologies/UnityCsReference/blob/master/Runtime/Export/Scripting/UnitySynchronizationContext.cs)以及主线程的消息泵，如此await的异步委托会默认会回到Unity主线程执行(可通过task.ConfigureAwait配置)
-2. Unity官方提供了部分Async API，如LoadAssetAsync
-3. Unity社区提供了针对大部分常见YieldInstruction(如WaitForSeconds)，以及其他常用库(如UnityWebRequest)的GetAwaiter适配(如[Unity3dAsyncAwaitUtil](https://github.com/svermeulen/Unity3dAsyncAwaitUtil))
+2. Unity社区提供了针对大部分常见YieldInstruction(如WaitForSeconds)，以及其他常用库(如UnityWebRequest、ResourceRequest)的GetAwaiter适配(如[Unity3dAsyncAwaitUtil](https://github.com/svermeulen/Unity3dAsyncAwaitUtil))
 
 [Unity3dAsyncAwaitUtil](https://github.com/svermeulen/Unity3dAsyncAwaitUtil)这个库及其相关Blog: [Async-Await instead of coroutines in Unity 2017](http://www.stevevermeulen.com/index.php/2017/09/using-async-await-in-unity3d-2017/)，非常值得了解一下，以适配大家最熟悉的YieldInstruction WaitForSeconds(3)为例，来大概了解下如何通过将它适配为可以直接`await WaitForSeconds(3);`
 
@@ -403,15 +402,48 @@ public class SimpleCoroutineAwaiter : INotifyCompletion
 }
 ```
 
-如此我们就可以直接使用`await WaitForSeconds(3);`了，深入细节可以发现，不管是WaitForSeconds本身，还是之后的回调委托，其实都是在Unity主线程中执行的，并且结合RunOnUnityScheduler的优化，整个过程既不会创建线程，也不会产生额外的消息投递，只是在yield上加了一层壳子而已。上例也再次说明了，async/await本身只是异步编程模型，具体的线程切换情况，Awaiter，SynchronizationContext，ConfigureAwait等综合控制。
+如此我们就可以直接使用`await WaitForSeconds(3);`了，深入细节可以发现，不管是WaitForSeconds本身，还是之后的回调委托，其实都是在Unity主线程中执行的，并且结合RunOnUnityScheduler的优化，整个过程既不会创建线程，也不会产生额外的消息投递，只是在yield上加了一层壳子而已。这也再次说明了，async/await本身只是异步编程模型，具体的线程切换情况，Awaiter，SynchronizationContext，ConfigureAwait等综合控制。
 
-这个工具库还有一些有意思的小特性，比如Task到IEnumerator的转(原理就是轮询Task完成状态)，通过`await new WaitForBackgroundThread();`切换到后台线程(原理其实就是对`task.ConfigureAwait(false)`的封装)，这些在理解整个async/await，Unity协程，SynchronizationContext等内容后，都应该不难理解了。
+这个工具库还有一些有意思的小特性，比如Task到IEnumerator的转换(原理就是轮询Task完成状态)，通过`await new WaitForBackgroundThread();`切换到后台线程(原理其实就是对`task.ConfigureAwait(false)`的封装)，这些在理解整个async/await，Unity协程，SynchronizationContext等内容后，都应该不难理解了。
 
 另外，这里有篇关于[Unity中async/await与coroutine的性能对比](https://www.linkedin.com/pulse/unity-async-vs-coroutine-jo%C3%A3o-borks)，可以看看。
 
+### Unity UniTask
+
+通过前面的了解，可以发现，在Unity中，Coroutine可以用来实现单线程内的异步操作，Task可用来实现多线程的并发、异步和协同操作。而async/await是一种比Coroutine和Task更抽象易用的异步编程模型，C#完成了Task和async/await的适配，Unity3dAsyncAwaitUtil完成了Coroutine和async/await的适配，但对Unity开发者而言，还是不够方便，开发者面临过多方案选择: yield Coroutine or await Coroutine or await Task，因此，Unity社区又有大神出手，出了一套新方案: [UniTask](https://github.com/Cysharp/UniTask)，它的目的是整合Coroutine的轻量、Task的并发、async/await的易用于一体，为开发者提供高性能、可并发、易使用的接口。
+
+它的主要特性包括:
+
+- 基于值类型的 UniTask<T> 和自定义的 AsyncMethodBuilder 来实现0GC
+- 使所有 Unity 的 AsyncOperations 和 Coroutines 可等待 (类似Unity3dAsyncAwaitUtil的适配)
+- 基于 PlayerLoop 的任务(UniTask.Yield, UniTask.Delay, UniTask.DelayFrame...)可以替代所有协程操作
+- 对 MonoBehaviour 消息事件和 uGUI 事件进行 可等待/异步枚举 拓展
+- 与C#原生 Task/ValueTask/IValueTaskSource 行为高度兼容
+- ...
+
+更详细UniTask功能介绍，推荐[这篇博客](https://www.lfzxb.top/unitask_reademe_cn/)，UniTask一方面保留和适配 Unity Coroutine的轻量单线程异步模型，另一方面，将Coroutine的惯用场景(如WaitForSeconds)全部移植到性能更优的UniTask上实现了一遍(受益于async/await异步模型的抽象性)，并且保持UniTask与Task语义兼容，保留大部分的Task并发和交互模型能力。
+
+从实现上来说，以`UniTask.Delay`为例，它的功能类似于WaitForSeconds，它会返回一个`UniTask`对象，UniTask对象本身只是一层可await的壳子，真正起作用的对象是其持有的`DelayPromise`对象(`IUniTaskSource source`字段)，DelayPromise的有两个核心方法:
+
+- `OnCompleted`: AsyncUniTaskMethodBuilder挂接异步回调会通过UniTask Awaiter调到这里，它只是简单转调用`core.OnCompleted`，`UniTaskCompletionSourceCore core`是UniTask Promise都有的字段，做一些核心代码复用
+- `MoveNext() bool`: 它会检查时间是否到期，未到期返回true，到期则通过`core.TrySetResult(null)`设置完成状态，并返回true。注意，`core.TrySetResult`中，会调用并执行continuation
+
+异步挂接和回调机制有了，谁来驱动`IUniTaskSource.MoveNext`，注意，这个MoveNext和C#中的`IAsyncStateMachine.MoveNext`是不同的:
+
+- `IAsyncStateMachine.MoveNext`: 通过AsyncTaskMethodBuilder来驱动async/await语法糖生成的状态机，对于`await Task.Run`而言，Task在线程池中执行完成了，那么一个状态机的状态就完成了，并且由Task的ContinueWith机制负责调用continuation继续驱动状态机(继续调用MoveNext)
+- `IUniTaskSource.MoveNext`: 用于确定状态机的某个状态是否已经完成，`UniTask.Delay`本质是不切换线程的，如Unity Coroutine一样，必然需要额外的Ticker/Event/Poll这类机制，来检查状态变更(如Delay到期)，设置Awaiter Result，并回调continuation(通过`core.TrySetResult(null)`)
+
+驱动`IUniTaskSource.MoveNext`的工作是由[PlayerLoopRunner](https://github.com/Cysharp/UniTask/blob/master/src/UniTask/Assets/Plugins/UniTask/Runtime/Internal/PlayerLoopRunner.cs)来完成的，DelayPromise创建之后，就会被立即添加到PlayerLoop Action中，PlayerLoopRunner穿插在Unity的各个执行Timing，驱动/检查所有IPLayerLoopItem任务的MoveNext。
+
+对于`UniTask.Yield(PlayerLoopTiming.FixedUpdate);`这类场景，UniTask的实现更为简单，直接在`YieldAwaitable.OnCompleted(continuation)`挂接异步回调时，将continuation挂在PlayerLoop上即可，PlayerLoop会在对应timing(如FixedUpdate)触发时，调用continuation。
+
+另外，`UniTask.Run/RunOnThreadPool`不使用默认的UnitySynchronizationContext和ExecutionContext，而是自己做同步上下文切换，这一点可能会容易和原生Task行为混淆，虽然它也提供`UniTask.SwitchToMainThread`、`UniTask.SwitchToThreadPool`、`UniTask.ReturnToCurrentSynchronizationContext`等API进行精确的同步上下文控制。
+
+UniTask将Unity单线程异步编程诸多实践与async/await异步编程模型有机整合，并对Unity Coroutine与C# Task的诸多痛点进行优化和升级，看起来确实有一统Unity异步编程模型的潜力，应该离整合进Unity官方包也不远了。
+
 ### 一点体会
 
-首先我是个C#和Unity的门外汉，只是谈谈自己的体会，异步编程尤其是并发编程从来都不是一件简单的事，无论它看起来多么"简洁优雅"。C#从Thread/ThreadPool，到Task/TaskFactory/TaskScheduler，再到async/await，异步编程模型一直在演进，看起来越来越简单，可读性越来越"高"，但代价是编译器和运行时做了更多的工作(这些工作是作为开发者必须要了解的)，同时理解底层也越来越难:
+首先我是个C#和Unity的门外汉，只是谈谈自己的体会，异步编程尤其是并发编程从来都不是一件简单的事，无论它看起来多么"简洁优雅"。C#从Thread/ThreadPool，到Task/TaskFactory/TaskScheduler，再到async/await，UniTask，异步编程模型一直在演进，看起来越来越简单，可读性越来越"高"，但代价是编译器和运行时做了更多的工作(这些工作是作为开发者必须要了解的)，同时理解底层也越来越难:
 
 1. async/await这一套，如C语言的goto，都打破了函数封装的约束(所谓无栈编程？)，为深入理解代码行为带来了一定负担
 2. 同样一段代码，在不同的线程上运行，可能获得完全不一样的效果(SynchronizationContext和ExecuteContext不同)
