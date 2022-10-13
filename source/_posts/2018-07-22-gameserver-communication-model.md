@@ -20,9 +20,13 @@ categories:
 - 异步请求
 - 发布订阅
 
+在本文中，我将围绕一个简单的例子，来聊聊对这几种交互语义的个人理解。
+
+该例子为: 作为client端的A需要执行`(x+y)*z`操作，但其中的`x+y`，是由server端B实现的，A需要请求B得到`x+y`的结果，再将其`*z`完成业务逻辑。
+
 #### 同步RPC
 
-RPC库通常有现成的轮子，比如gRPC，这种写法应该是开发者最喜欢的方式，以golang gRPC为例:
+RPC库通常有现成的轮子，比如gRPC、thrift等，以golang gRPC为例:
 
 ```go
 // A 线程
@@ -40,7 +44,7 @@ func (b *B) Add(ctx context.Context, req *AddReq) (*AddAck, error) {
 }
 ```
 
-例子很简单，A线程需要B线程发起请求(这里是一个简单的加法)，然后再继续自己的逻辑，代码简洁明了。而诸如超时，错误传递等，gRPC都已经处理好了。同步RPC的缺点在后面讨论同步异步以及具体RPC框架的时候会讨论。
+代码简洁明了，远程请求和本地函数调用一样方便，这种写法应该是开发者最喜欢的方式。诸如超时，错误传递，甚至负载均衡等，gRPC都已经处理好了。同步RPC的缺点在后面讨论同步异步以及具体RPC框架的时候会讨论。
 
 <!--more-->
 
@@ -61,7 +65,7 @@ func handle(x,y,z int) {
 // B 线程
 func handleAddReq(req *AddReq) {
 	result := req.X + req.Y
-	// 需要显式指明响应路径，并且拷贝B根本不应该关心的请求数据上下文z
+	// 需要显式指明响应路径，并且透传B根本不应该关心的请求数据上下文z
 	Send2A(&AddAck{Result:result,Z:req.z})
 }
 
@@ -79,7 +83,7 @@ func handleAddAck(ack *AddAck) {
 3. 消息响应路径上下文: 指请求完成处理后，如何指明响应路径。上例中，对响应方B，它在响应AddReq时，需要显式指明响应到A。
 4. 超时机制: 用于处理对端无响应或慢响应的情况，避免消息黑洞(消息QoS得不到保证)
 
-相比同步RPC，单纯的异步消息框架，以上2，3，4都需要应用层关心和维护: 
+相比同步RPC，单纯的异步消息模型，以上2，3，4都需要应用层关心和维护: 
 
 - 请求数据上下文: 在上例中，请求方A需要将请求上下文与请求内容一起发送给服务方B(如`AddReq{x,y,z}`)，然后B再原封不动返回回来，这种方案一方面导致代码复用性很差，比如当AddReq有多种上下文时(如`AddReq(x,y)*z`, `AddReq(x,y)-a-b`)，则很难复用 AddReq和handleAddReq。当 B 是 DB 这类公用模块时，这类问题尤其突出。另一方面是带来了额外的消息负载开销(B根本不关心A的请求上下文)。最后一方面是这种方案很难实现异步超时(如果B没有响应A，那么A的超时处理中将获取不到当时的请求上下文)。
 - 消息响应路径上下文: 在上面的例子中，我们是在 handleAddReq 中直接调用 `Send2A(&AddAck{Result:result})` 的，这意味B假设AddReq是来自于A的，并显式指明响应路径，那么当 C，D也会请求 B 时，就需要定义 AddReqForC, AddReqForD 请求，或者在AddReq中添加标识请求方来源的字段，让请求方来填。这种将响应路径(也是请求来源)绑定在消息内容上的做法，不利于代码复用和解耦。
@@ -94,14 +98,17 @@ func handleAddAck(ack *AddAck) {
 ```
 // A 线程
 func handle(x,y,z int) {
-	self.AsyncCb(targetB, &AddReq{A: x, B: y}, z, 3*time.Second, handleAddAck)
+	// 这里传入z，是为了之后的handleAddAck响应处理中，能够正确获取到请求上下文z，进行后续的处理
+	// 请求上下文将由框架层保存在本端，不会传给对端，如此即使对端B超时无响应，请求方仍然能获取到请求上下文，进行容错处理
+	self.AsyncCb(targetB, &AddReq{X: x, Y: y}, z, 3*time.Second, handleAddAck)
 }
 
-// AckCtx由异步回调框架提供，包含响应消息本身，请求错误(超时，网络故障等), 请求上下文等
+// AckCtx由异步回调框架提供，包含响应消息本身，请求错误(超时，网络故障等), 请求上下文(在这里是z)等
 func handleAddAck(ackctx *AckCtx) {
 	if ackctx.Err != nil {
 		// 处理超时，对端无响应等框架性错误
 	}
+	// 从actCtx.Ctx.(int)中取出请求上下文z，执行后续操作
 	result := ackctx.(*AddAck).Result * ackCtx.Ctx.(int)
 }
 
@@ -109,8 +116,8 @@ func handleAddAck(ackctx *AckCtx) {
 // ReqCtx由异步请求框架提供，包含请求消息本身，响应路径，消息唯一ID等
 func handleAddReq(reqctx *ReqCtx) {
 	req := reqctx.Req.(*AddReq)
-	// 直接返回，无需关心请求上下文，响应路径等
-	reqctx.Reply(&AddAck{Result: req.A + req.B})
+	// 直接返回，无需关心请求上下文(z)，响应路径(B)等
+	reqctx.Reply(&AddAck{Result: req.X + req.Y})
 }
 ```
 
@@ -144,13 +151,13 @@ func handle(x,y,z int) {
 同步请求指基于消息的同步阻塞的请求-响应语义，HTTP协议就是一个典型的基于文本消息的同步请求协议，只不过基于性能和消息顺序性的考量，游戏服务器能直接使用HTTP的场景有限。如果要自己实现同步请求语义的话，可以基于异步回调机制封装，形式上，可以是同步回调，也可以是类似RPC的返回值， 同步请求不需要考虑上下文和回调的维护，
 
 ```
-// 返回值
+// A线程 返回值方式
 func handle (x,y,z int) {
 	ackctx	:= SyncRequest(&AddReq{X: x, Y: y}, 3*time.Second)
 	result := ackctx.Ack.(*AddAck).Result * z
 }
 
-// 同步回调
+// A线程 同步回调方式
 func handle(x,y,z int) {
 	self.SyncCb(targetB, &AddReq{A: x, B: y}, z, 3*time.Second), func (ackctx *AckCtx) {
 		if ackctx.Err != nil {
@@ -161,7 +168,7 @@ func handle(x,y,z int) {
 }
 ```
 
-对B而言，它的实现和异步回调一样，因为它不关心请求方是同步还是异步的，同步请求和同步RPC看起来比较类似，但由于其基于消息，有更强的扩展性和可移植性，很容易适配各种底层传输方式。
+对服务端B而言，它的实现和异步请求一样，因为它不需要关心请求方是同步还是异步的，同步请求和同步RPC看起来比较类似，但由于其基于消息，有更强的扩展性和可移植性，很容易适配各种底层传输和路由方式，保留较大的灵活性。
 
 #### 发布订阅
 
