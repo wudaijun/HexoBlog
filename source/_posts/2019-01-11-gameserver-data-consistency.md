@@ -101,7 +101,7 @@ Q1. 为什么不通过分布式事务或锁来保证一致性？
 
 Q2. 为什么不用同步RPC？
 
-为了避免`checkDiamond`和`deductDiamond`，以及`checkMarch`和`startMarch`的不一致性，我们可以让 Map `checkMarch` 后，直接同步调用 Play 的`deductDiamond`，然后根据扣除是否成功执行后续操作。这样很大程度上避免了不一致性。然而同步调用可能会带来更多的问题(吞吐量，环形阻塞，雪崩等)，我在[游戏服务器中的通信模型](http://wudaijun.com/2018/07/gameserver-async-programing/)中有详细讨论。
+为了避免`checkDiamond`和`deductDiamond`，以及`checkMarch`和`startMarch`的不一致性，我们可以让 Map `checkMarch` 后，直接同步调用 Play 的`deductDiamond`，然后根据扣除是否成功执行后续操作。这样很大程度上避免了不一致性。然而同步调用可能会带来更多的问题(吞吐量，环形阻塞，雪崩等)，我在[游戏服务器中的通信模型](https://wudaijun.com/2018/07/gameserver-communication-model/)中有详细讨论。
 
 Q3. 关于超时?
 
