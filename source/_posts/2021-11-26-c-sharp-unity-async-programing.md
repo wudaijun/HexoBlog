@@ -1,19 +1,21 @@
 ---
 title: C#/Unity中的异步编程
 layout: post
-categories: programing
+categories: c#
 tags:
 - c#
 - unity
+- coroutine
+- async programing
 ---
 
-这段时间学习Unity，顺便系统性地了解了下C#和Unity异步编程的各种机制和实现细节。本文是这些学习资料和个人理解的汇总。会先介绍下C#迭代器，Task，async/await，同步上下文等机制。然后聊聊其在Unity上的一些变体和应用。
+这段时间学习Unity，顺便系统性地了解了下C#和Unity异步编程的各种机制和实现细节。本文是这些学习资料和个人理解的汇总。会先介绍下C# yield，Task，async/await，同步上下文等机制。然后聊聊其在Unity上的一些变体和应用。
 
 <!--more-->
 
 ### C# yield
 
-`yield return`将一个函数分为多个部分，让其具有分段多次返回的能力:
+`yield`是C#提供的快速创建枚举器的机制:
 
 ```C#
 public static IEnumerable<int> TestYield(int a)
@@ -39,25 +41,26 @@ static void Main(string[] args)
 // 5
 ```
 
-迭代器本身是基于迭代器的语法糖，编译器会为TestYield函数生成一个状态机类，将函数执行体通过yield分为几个部分，内部通过一个state字段(通常是个整数)来标识当前迭代到哪一步了，并实现IEnumerator，IEnumerable等接口。因此我们可以将TestYield作为一个迭代器直接用于while和for循环。介绍关于yield语法糖实现机制的文章很多，这里就不赘述了。
+实现上来说，C#编译器会为TestYield函数生成一个状态机类，将函数执行体通过yield分为几个部分，内部通过一个state字段(通常是个整数)来标识当前迭代到哪一步了，并实现了IEnumerable、IEnumerator枚举器接口。因此可以将TestYield返回值作为一个可枚举对象。介绍关于yield语法糖实现机制的文章很多，这里就不赘述了。
 
-这类让函数返回多次的能力，容易让人联想倒lua coroutine，但它们是有区别的，C#本质上没有协程，如果我们将C# yield对应lua yield，C# MoveNext 对应 lua resume，可以做个简单的对比:
-
-1. lua的协程yield/consume之间具备双向动态交换信息的能力，C#只能单向静态传递(yield => MoveNext)
-2. lua的协程本质是运行时捕获和保存堆栈上下文，而C#只是编译期的语法糖(转换为状态机类，以适配迭代器接口)
-
+C# 枚举器和JS Generator机制上非常类似，不过只具备单向传值的能力(yield->MoveNext)。我在[JS异步编程](http://wudaijun.com/2018/07/javascript-async-programing/)和[Lua协程](https://wudaijun.com/2015/01/lua-coroutine/)中有介绍关于协程和生成器的区别，在我的理解中，C#枚举器和JS生成器一样，都不能算作协程。
 
 ### Unity Coroutine
 
-C#没有协程，我们经常听到或看到C#协程的概念，主要来自于Unity，它对yield做了一些改造:
+C#没有协程，而Unity C#中则经常看到协程的概念(Unity Coroutine)，本质上来说，Unity Coroutine是和JS Generator类似的通过生成器/枚举器实现异步的编程模型。Unity基于C# yield进行了进一步完善:
 
-1. 基于yield返回的对象，只能是YieldInstruction的子类(它最重要的方法是bool IsDone()，用于判断当前任务是否已经完成)
-2. 默认实现了部分预定义的YieldInstruction，如Seconds，null，WaitForEndOfFrame等，以实现常用的协程控制(告诉Unity协程的唤醒时机)
-2. Unity Runtime会根据返回的YieldInstruction对象类型，在合适(IsDone()==true)的时候唤醒协程(无需显示MoveNext)
-3. 支持协程嵌套
-5. 简单的协程生命周期管理(提供StopCoroutine接口)，并将协程的生命周期与GmaeObject绑定
+1. 基于yield返回的对象，只能是YieldInstruction的子类(它最重要的方法是bool IsDone()，用于判断异步操作是否已经完成)
+2. Unity Engine实现了部分预定义的YieldInstruction，如WaitForSeconds，WaitForEndOfFrame等，以实现常用的协程控制
+3. 完善了协程(枚举器)生命周期管理(提供StopCoroutine接口)和嵌套机制，并将协程的生命周期与GameObject绑定
 
-如此，对于Unity开发者而言，使用yield能达成协程类似的效果，yield虽然不能像await一样传递返回值，但由于本质是单线程，yield的处理结果可以放到类成员或GameObject上，因此灵活性也足够。本质上，Unity Coroutine是个桢驱动的迭代器。关于Unity协程的更多细节，可以参考[Unity Coroutines: How Do They Work?](https://gamedevunboxed.com/unity-coroutines-how-do-they-work/)，[深入剖析Unity协程的实现原理](https://sunweizhe.cn/2020/05/08/%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90Unity%E5%8D%8F%E7%A8%8B%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/)
+关于Unity Coroutine的更深入实现原理推荐[这篇博客](https://sunweizhe.cn/2020/05/08/%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90Unity%E5%8D%8F%E7%A8%8B%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/)。如此，对于Unity开发者而言，使用yield就能完成简单的异步控制。当然，还达不到JS Generator异步那样的灵活度(毕竟C# yield不能像JS yield一样双向传值)。我们可以从[JS 异步编程](http://wudaijun.com/2018/07/javascript-async-programing/)中提到的Generator异步编程的四要素，来对比看看Unity Coroutine是如何工作的:
+
+- Generator: C#的yield相当于JS Generator的阉割版，支持执行权转移，单向传值
+- Thunk: Thunk的本质目的是让Iterator能以一种标准化的方式挂接回调(如此才能回到yield语句)，而Unity YieldInstruction本身就是一种标准，Unity会在YieldInstruction完成(IsDone()==true)后，调用对应协程的的MoveNext回到yield语句，这也就相当于完成了Thunk的职责
+- AsyncOp: Unity Engine和它的标准库提供了大量适配了YieldInstruction的异步操作，包括帧控制、定时、网络IO等，并且支持开发者扩展
+- Iterator: Unity Engine统一管理所有通过StartCoroutine启动的协程，并基于帧驱动检查它们的状态，在YieldInstruction异步操作完成后继续驱动协程(MoveNext)，直至协程生命周期结束。
+
+由于C# yield是单向传值，Unity协程自然也就不支持yield语句返回值。如此看来，Unity C#确实具备部分的异步编程能力，不过如前面所说，基于个人对狭义的协程概念的理解，我认为程JS、C#、Unity支持协程是不合适的。类似的还有Golang的抢占式轻量级线程goroutine也被翻译为协程。
 
 ### C# Task
 
@@ -202,8 +205,8 @@ Main: after AsyncTask result: 667 thread1
 在进一步了解它的用法之前，我们先大概了解下它的实现机制(可以看看[这篇文章](https://zhuanlan.zhihu.com/p/197335532)提到了不少实现细节)，async/await本质也是编译器的语法糖，编译器做了以下事情:
 
 1. 为所有带async关键字的函数，生成一个状态机类，它满足IAsyncStateMachine接口，await关键字本质生成了状态机类中的一个状态，状态机会根据内部的state字段(通常-1表示开始，-2表示结束，其他状态依次为0,1,2...)，一步步执行异步委托。整个状态机由`IAsyncStateMachine.MoveNext`方法驱动，类似迭代器
-2. 代码中的`await xxx`，xxx返回的对象都需要实现GetAwaiter方法，该方法返回一个Awaiter对象，编译器不关心这个对象Awaiter对象类型，它只关心这个Awaiter对象需要满足三个条件: a. 实现INotifyCompletion，b. 实现IsCompleted属性，c. 实现GetResult方法，如此编译器就能知道如何与该异步操作进行交互，比如最常见的Task对象，就实现了GetAwaiter方法返回一个[TaskAwaiter](https://referencesource.microsoft.com/#mscorlib/system/threading/Tasks/Task.cs,2935)对象，但除了TaskAwaiter，任何满足以上三个条件的对象均可被await
-3. 有了stateMachine和TaskAwaiter之后，还需要一个工具类将它们组合起来，以驱动状态机的推进，这个类就是`AsyncTaskMethodBuilder/AsyncTaskMethodBuilder<TResult>`，是Runtime预定义好的，每个async方法，都会创建一个Builder对象，然后通过[AsyncTaskMethodBuilder.Start](https://referencesource.microsoft.com/#mscorlib/system/runtime/compilerservices/AsyncMethodBuilder.cs,67)方法绑定对应的IAsyncStateMachine，并进行状态首次MoveNext驱动，MoveNext执行到await处(此时实际上await已经被编译器去掉了，只有TaskAwaiter)，会调用`TaskAwaiter.IsCompleted`判断任务是否已经立即完成(如`Task.FromResult(2)`)，如果已完成，则将结果设置到builder(此时仍然在当前线程上下文)，并之后跳转到之后的代码(直接goto，无需MoveNext)，否则，更新state状态，通过[AsyncTaskMethodBuilder.AwaitUnsafeOnCompleted](https://referencesource.microsoft.com/#mscorlib/system/runtime/compilerservices/AsyncMethodBuilder.cs,154)挂接(对Task而言，本质是[挂接到Continuation](https://referencesource.microsoft.com/#mscorlib/system/runtime/compilerservices/TaskAwaiter.cs,339)上)异步回调(此回调包含整个状态机的后续驱动方式，通过[GetCompletionAction](https://referencesource.microsoft.com/#mscorlib/system/runtime/compilerservices/AsyncMethodBuilder.cs,ac92075576570beb)生成)并返回(此时当前函数堆栈已结束)，当taskAwaiter完成(不同的Awaiter完成方式也不同，对Task而言，即Task执行完成)后，buildier会通过GetCompletionAction生成的回调再次调用到`stateMachine.MoveNext`驱动状态机(此时可能已经不在当前线程，state状态也不一样了，可通过TaskAwaiter.GetResult拿到异步结果)，如此完成状态机的正常驱动。
+2. 代码中的`await xxx`，xxx返回的对象都需要实现GetAwaiter方法，该方法返回一个Awaiter对象，编译器不关心这个对象Awaiter对象类型，它只关心这个Awaiter对象需要满足三个条件: a. 实现INotifyCompletion(只有一个`OnCompleted(Action continuation)`方法)，b. 实现IsCompleted属性，c. 实现GetResult方法，如此编译器就能知道如何与该异步操作进行交互，比如最常见的Task对象，就实现了GetAwaiter方法返回一个[TaskAwaiter](https://referencesource.microsoft.com/#mscorlib/system/threading/Tasks/Task.cs,2935)对象，但除了TaskAwaiter，任何满足以上三个条件的对象均可被await
+3. 有了stateMachine和TaskAwaiter之后，还需要一个工具类将它们组合起来，以驱动状态机的推进，这个类就是`AsyncTaskMethodBuilder/AsyncTaskMethodBuilder<TResult>`，是Runtime预定义好的，每个async方法，都会创建一个Builder对象，然后通过[AsyncTaskMethodBuilder.Start](https://referencesource.microsoft.com/#mscorlib/system/runtime/compilerservices/AsyncMethodBuilder.cs,67)方法绑定对应的IAsyncStateMachine，并进行状态首次MoveNext驱动，MoveNext执行到await处(此时实际上await已经被编译器去掉了，只有TaskAwaiter)，会调用`TaskAwaiter.IsCompleted`判断任务是否已经立即完成(如`Task.FromResult(2)`)，如果已完成，则将结果设置到builder(此时仍然在当前线程上下文)，并之后跳转到之后的代码(直接goto，无需MoveNext)，否则，更新state状态，通过[AsyncTaskMethodBuilder.AwaitUnsafeOnCompleted](https://referencesource.microsoft.com/#mscorlib/system/runtime/compilerservices/AsyncMethodBuilder.cs,154)(最终调到`Awaiter.OnCompleted`)挂接(对`TaskAwaiter.OnCompleted`而言，是[挂接到Continuation](https://referencesource.microsoft.com/#mscorlib/system/runtime/compilerservices/TaskAwaiter.cs,339)上)异步回调(此回调包含整个状态机的后续驱动方式，通过[GetCompletionAction](https://referencesource.microsoft.com/#mscorlib/system/runtime/compilerservices/AsyncMethodBuilder.cs,ac92075576570beb)生成)并返回(此时当前函数堆栈已结束)，当taskAwaiter完成(不同的Awaiter完成方式也不同，对Task而言，即Task执行完成)后，buildier会通过GetCompletionAction生成的回调再次调用到`stateMachine.MoveNext`驱动状态机(此时可能已经不在当前线程，state状态也不一样了，可通过TaskAwaiter.GetResult拿到异步结果)，如此完成状态机的正常驱动。
 4. 除了驱动状态机外，AsyncTaskMethodBuilder的另一个作用是将整个async函数，封装为一个新的Task(wrapper task)，该Task可通过`AsyncTaskMethodBuilder.Task`属性获取。当stateMachine通过MoveNext走完每个状态后，会将最终结果，通过builder.SetResult写入到builder中的Task，如果中途出现异常，则通过builder.SetExpection保存，如此发起方可通过`try {await xxx;} catch (e Exception){...}`捕获异常，最终整个编译器改写后的async函数，返回的实际上就是这个`builder.Task`。
 
 #### 基础用法
@@ -283,24 +286,33 @@ static void Main(string[] args)
 
 总结下，async/await本身不创建线程，`aaa; await bbb; ccc;` 这三行代码，可能涉及到一个线程(比如没有await，或任务立即完成，甚至await线程自己的异步操作)，两个线程(比如没有自定义SynchronizationContex，或有自己实现消息泵的的SynchronizationContex)，三个线程(有其他线程实现消息泵的自定义SynchronizationContex)。但具体涉及几个线程，GetAwaiter(通常返回的是TaskAwaiter，但是你也可以自定义)，SynchronizationContex等外部代码和环境决定的。
 
-#### 常见问题
+#### 一些补充
 
 ##### await与yield的区别
 
 yield和await都是语法糖，最后都会被生成一个状态机，每行yield/await都对应其中一个状态。
 
-- 状态驱动: yield状态机是手动单步驱动的(通过foreach或显示调用MoveNext)，而await状态机是自动驱动的(从调用async函数起，状态机就通过异步回调不断调用MoveNext，直至走完每个状态)
+- 本质用途: yield用于快速构造枚举器，而await用于简化异步编程模型，两者都会生成状态机，但前对外表现为可枚举类，用于手动迭代，后者主要用于AsyncTaskMethodBuilder自动迭代(从调用async函数起，Builder就通过异步回调不断调用MoveNext，直至走完每个await状态)
 - 线程切换: yield不涉及线程上下文的切换，而await通常涉及(前面说了，不是因为它会创建线程，而是依赖具体的异步操作，以及同步上下文)
-- 本质用途: yield用于快速构造迭代器，await用于简化异步编程模型
+
+##### C# async/await vs JS Generator异步
+
+既然async/await也是异步编程模型，同样的，我们也将C# async/await用Generator异步编程四要素来分析下:
+
+- Generator: C# yield是由编译器生成状态机类并实现IEnumerable，类似的，C# async/await也是编译器生成的可迭代状态机IAsyncStateMachine，不过它只有MoveNext()方法，看起来甚至不能单向传值。不过事实上，它的双向传值机制都封装在状态机类内部了
+- Thunk: await也有Awaitable标准，它需要实现INotifyCompletion的`OnCompleted(Action continuation)`方法，这也就提供了统一的挂载回调标准。C# Task和JS Promise一样，都实现了异步执行和回调挂接分离
+- AsyncOp: C#的Task原生适配了Awaitable，并且Awaitable也非常易于开发者扩展(后面讲UniTask还会详述)
+- Iterator: 整个状态机的驱动，由前面提到的AsyncTaskMethodBuilder来完成，它负责将await之后的执行路径通过OnCompleted挂载到异步操作上
+
+强行将C# async/await映射到四要素可能不是很合适，因为C# async/await的Generator和Iterator是一体生成的，严格上不涉及所谓的执行权转移。C# async/await 是在async function外部直接生成一个状态机Wrapper类，对函数执行入口、返回值等进行了"魔改"。而JS Generator异步，是通过自定义的run函数或第三方co库驱动迭代。因此C#的async/await可以进行任意函数层级嵌套，而无需像JS一样每一个Generator都要单独驱动，另外C# async/await 可能涉及到线程切换，而JS则通常都是在单线程。
 
 ##### async/await是Task+状态机的语法糖
 
-从实现机制上来说，这句话没有问题，但要更细致地看，一方面，async函数在经过编译器处理后，最终返回给调用方的，是builder中的Task对象(这也是为何async方法的返回值只能是`void`, `Task`, `Task<TResult>`)。而另一方面，await本身不关注Task，它支持所有提供异步相关接口的对象(GetAwaiter)，这样的好处在于除了Task，它还可以集成更多来自框架(比如`.NET`已经提供的各种Async API)，甚至自定义的异步对象，已有的异步操作也可以通过适配GetAwaiter移植到新的async/await异步编程模型。
+这个要从两方面看，一方面，async函数在经过编译器处理后，最终返回给调用方的，是builder中的Task对象(这也是为何async方法的返回值只能是`void`, `Task`, `Task<TResult>`)。而另一方面，await本身不关注Task，它支持所有提供异步相关接口的对象(GetAwaiter)，这样的好处在于除了Task，它还可以集成更多来自框架(比如`.NET`已经提供的各种Async API)，甚至自定义的异步对象，已有的异步操作也可以通过适配GetAwaiter移植到新的async/await异步编程模型。
 
-##### 出现await的地方，当前线程就会返回
+##### 出现await的地方，当前线程就会返回，或发生线程上下文切换
 
-这个前面也解释过了，出现await的地方未必会涉及线程上下文切换，比如前面的F2Async，对它的整个调用都是同步的。异步编程和线程无关，线程切换取决于异步操作的实现细节，而await本身只关注与异步操作交互的接口。
-
+这个前面也解释过了，出现await的地方未必会涉及线程上下文切换，比如前面的`await F2Async()`，对它的整个调用都是同步的。异步编程和线程无关，线程切换取决于异步操作的实现细节，而await本身只关注与异步操作交互的接口。
 
 ### Unity async/await
 
@@ -443,10 +455,17 @@ UniTask将Unity单线程异步编程诸多实践与async/await异步编程模型
 
 ### 一点体会
 
-首先我是个C#和Unity的门外汉，只是谈谈自己的体会，异步编程尤其是并发编程从来都不是一件简单的事，无论它看起来多么"简洁优雅"。C#从Thread/ThreadPool，到Task/TaskFactory/TaskScheduler，再到async/await，UniTask，异步编程模型一直在演进，看起来越来越简单，可读性越来越"高"，但代价是编译器和运行时做了更多的工作(这些工作是作为开发者必须要了解的)，同时理解底层也越来越难:
+首先我是个C#和Unity的门外汉，只是谈谈自己的体会，异步编程尤其是并发编程从来都不是一件简单的事，无论它看起来多么"简洁优雅"。学习各语言/框架的异步演进史，是一件非常有意思的事情:
 
-1. async/await这一套，如C语言的goto，都打破了函数封装的约束(所谓无栈编程？)，为深入理解代码行为带来了一定负担
-2. 同样一段代码，在不同的线程上运行，可能获得完全不一样的效果(SynchronizationContext和ExecuteContext不同)
+- C#: Thread(关注实现) -> Task(关注任务) -> async/await(关注可读性和扩展性)
+- Unity: Coroutine(Engine做大量支持，算半个异步编程模型) -> Unity3DAsyncAwaitUtil(将Coroutine适配到async/await) -> 到UniTask(整合Coroutine和Task，兼并性能更高、可读性更高、更适合Unity)
+- JS: Callback(最原始) -> Generator+Thunk+AsyncOp+Iterator异步(初步四件套) -> Promise(统一规范异步操作) -> Generator+Promise+co(标准三件套) -> async/await+Promise(终极两件套)
 
-当然，这不是语言的错，语言框架本身只提供选择，只是作为使用者的我们，在并发越来越"容易"的同时，保持对底层的理解，才能充分发挥工具的作用。就我目前的理解而言，C# async/await可能不是很适合用于复杂上下文的后端开发(比如游戏服务器)，因为这类场景会非常重视执行上下文和并发安全，对于普通开发者而言，直接上手并理解async/await还是有一定门槛的。
+异步编程模型一直在演进，看起来写越来越"简单"，可读性越来越"高"，代价是编译器和运行时做了更多的工作，并且这些工作和原理是作为开发者必须要了解的，以C# async/await为例，如果不能充分了解底层原理，就容易引发: 
 
+- 异步回调闭包引用可变上下文的问题
+- async "无栈编程"本身带来的理解负担和调试难度
+- 代码的线程上下文难以分析，容易引发并发安全访问的问题
+- 同一段代码在不同的线程执行可能具有完全不同的行为(SynchronizationContext和ExecuteContext不同)
+
+等问题。语言和框架本身只提供选择，作为使用者的我们，在并发越来越"容易"的同时，保持对原理的理解，才能充分发挥工具的作用(享受上限高的好处，避免下限低的问题)。
