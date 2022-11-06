@@ -49,11 +49,12 @@ C# 枚举器和JS Generator机制上非常类似，不过只具备单向传值�
 
 C#没有协程，而Unity C#中则经常看到协程的概念(Unity Coroutine)，本质上来说，Unity Coroutine是和JS Generator类似的通过生成器/枚举器实现异步的编程模型。Unity基于C# yield进行了进一步完善:
 
-1. 基于yield返回的对象，只能是YieldInstruction的子类(它最重要的方法是bool IsDone()，用于判断异步操作是否已经完成)
-2. Unity Engine实现了部分预定义的YieldInstruction，如WaitForSeconds，WaitForEndOfFrame等，以实现常用的协程控制
-3. 完善了协程(枚举器)生命周期管理(提供StopCoroutine接口)和嵌套机制，并将协程的生命周期与GameObject绑定
+1. Unity协程通过Unity Engine提供的`StartCoroutine(myEnumerableFunc)`启动，Unity Engine会驱动枚举器的迭代，无需开发者关心
+1. Unity协程基于yield返回的对象，只能是YieldInstruction的子类(它最重要的方法是bool IsDone()，用于判断异步操作是否已经完成)，如此Unity Engine会在YieldInstruction完成后，通过MoveNext迭代枚举器
+3. Unity Engine预实现了部分YieldInstruction，如WaitForSeconds，WaitForEndOfFrame等，以实现常用的协程控制
+4. Unity Engine完善了协程(枚举器)生命周期管理(Start/Stop)和嵌套机制(如一个协程yield另一个协程)，并将协程的生命周期与GameObject绑定
 
-关于Unity Coroutine的更深入实现原理推荐[这篇博客](https://sunweizhe.cn/2020/05/08/%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90Unity%E5%8D%8F%E7%A8%8B%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/)。如此，对于Unity开发者而言，使用yield就能完成简单的异步控制。当然，还达不到JS Generator异步那样的灵活度(毕竟C# yield不能像JS yield一样双向传值)。我们可以从[JS 异步编程](http://wudaijun.com/2018/07/javascript-async-programing/)中提到的Generator异步编程的四要素，来对比看看Unity Coroutine是如何工作的:
+关于Unity Coroutine的更深入实现原理推荐[这篇博客](https://sunweizhe.cn/2020/05/08/%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90Unity%E5%8D%8F%E7%A8%8B%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/)。如此，对于Unity开发者而言，使用yield就能完成简单的异步控制。当然，还达不到JS Generator异步那样的灵活度(如C# yield不能像JS yield一样双向传值)。我们可以从[JS 异步编程](http://wudaijun.com/2018/07/javascript-async-programing/)中提到的Generator异步编程的四要素，来对比看看Unity Coroutine是如何工作的:
 
 - Generator: C#的yield相当于JS Generator的阉割版，支持执行权转移，单向传值
 - Thunk: Thunk的本质目的是让Iterator能以一种标准化的方式挂接回调(如此才能回到yield语句)，而Unity YieldInstruction本身就是一种标准，Unity会在YieldInstruction完成(IsDone()==true)后，调用对应协程的的MoveNext回到yield语句，这也就相当于完成了Thunk的职责
