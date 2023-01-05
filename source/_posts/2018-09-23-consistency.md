@@ -16,9 +16,9 @@ tags: distributed
 - 状态机复制([State Machine Replication](https://en.wikipedia.org/wiki/State_machine_replication)): 它的理论基础是任何初始状态一样的状态机(如KV Store)，如果执行的命令日志(包括新增、修改、删除等任何操作本质都将转化为新的命令日志追加)一样，则它们的状态机最终状态也将一样(KV数据一致)。如此不需要强制这些命令在各个节点是同时开始、同步完成的，只需要将连续的命令日志同步给其他节点(这个步骤也叫日志复制Log Replication)，允许在此期间节点存在内部状态的不一致(只要这些不一致不被外观察到)，所有的分布式节点的最终状态会达成一致。
 - 投票机制([Quorum](https://en.wikipedia.org/wiki/Quorum_(distributed_computing))): 少数服从多数原则，如果能在多数节点达成一致时就作出不可推翻的最终决策，那么就可以容忍少数节点的不可用，这也就打破了前面说的节点数越多，可用性越低的悖论
 
-在状态机复制的场景下，Raft/Paxos 等共识算法被用来确保各个复制状态机(节点)的日志是一致的，但Raft/Paxos本身对外不直接体现出一致性(Consistency)，一致性是应用层的决策，比如Raft算法中，写操作成功，仅仅意味着超过半数节点对该写日志进行Commit(命令日志一致)，但不保证它们对该命令进行了Apply(状态机一致)，这一层就是交由应用层去灵活实现的，类似的应用层取舍点还包括Follower是否提供读服务，网络分区后Follower/Candidate是否对外提供读服务等等，因此不同的应用可以基于Raft算法实现不同的一致性，比如ETCD基于Raft支持线性一致性(后面会聊到这个概念)的读写操作。
+在状态机复制的场景下，Paxos/Raft 等共识算法被用来确保各个复制状态机(节点)的日志是一致的，但Paxos/Raft 本身对外不直接体现出一致性(Consistency)，一致性是应用层的决策，比如Raft算法中，写操作成功，仅仅意味着超过半数节点对该写日志进行Commit(命令日志一致)，但不保证它们对该命令进行了Apply(状态机一致)，这一层就是交由应用层去灵活实现的，类似的应用层取舍点还包括Follower是否提供读服务，网络分区后Follower/Candidate是否对外提供读服务等等，因此不同的应用可以基于Raft算法实现不同的一致性，比如ETCD基于Raft支持线性一致性(后面会聊到这个概念)的读写操作。从另一个角度来说，共识算法可以理解为达成一致的一种算法手段。
 
-从另一个角度来说，共识算法可以理解为达成一致的一种算法手段。类似的，区块链中非常重要的一部分也是共识算法，但通常使用是 POW(Proof of Work) 或 POS(Proof of Stake)，这类共识算法通常适合用在公网，去中心化的情形下。
+Paxos/Raft属于宕机容错(CFT，Crash Fault Tolerance)算法，因为它们只容忍了节点/网络故障，没有考虑节点不可信任，可能"作恶"的问题，如经典的[拜占庭将军问题](https://zh.m.wikipedia.org/zh-hans/%E6%8B%9C%E5%8D%A0%E5%BA%AD%E5%B0%86%E5%86%9B%E9%97%AE%E9%A2%98)。能够(一定程度)容忍拜占庭问题的共识算法被称为拜占庭容错(Byzantine Fault Tolerance)算法，典型如POW(Proof of Work)、POS(Proof of Stake)、PBFT(Practical Byzantine Fault Tolerance)算法等，BFT算法通常比CFT算法实现成本更高，它通常适合用在公网，去中心化的情形下，如区块链场景。
 
 <!--more-->
 
