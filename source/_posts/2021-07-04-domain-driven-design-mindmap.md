@@ -1,5 +1,5 @@
 ---
-title: 领域驱动设计的一点学习心得
+title: 领域驱动设计的一些小结
 layout: post
 categories: design
 tags:
