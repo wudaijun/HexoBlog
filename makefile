@@ -5,6 +5,10 @@ init:
 	npm install
 	npm install hexo-server --save
 	npm install hexo --save
+	# 初始化主题
+	mkdir themes
+	git clone https://github.com/theme-next/hexo-theme-next themes/next 
+	cp _config.next.yml themes/next/_config.yml
 
 # 如果init Error:
 # xcode-select: error: tool 'xcodebuild' requires Xcode, but active developer directory ....
