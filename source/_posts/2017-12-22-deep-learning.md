@@ -59,7 +59,7 @@ $b = b - \alpha * \frac{dJ(w,b)}{db}$
 
 ![](/assets/image/201712/deep-learning-propagation.png)
 
-这里的$a$即$\hat{y}$，图中$\sigma(z)=\frac{1}{(1+e^{-z})}$，$L(a,y)=-(y\lg{a}+(1-y)\lg(1-a))$。整个从参数$w$，$b$推导到损失函数值的过程被称为**正向传播(Forward Propagation)**，而我们现在要做的，是根据损失函数反过来对参数求偏导，这个过程叫**反向传播(Backward Propagation)**:
+这里的$a$即$\hat{y}$(注意和前面的学习步长$\alpha$区分)，图中$\sigma(z)=\frac{1}{(1+e^{-z})}$，$L(a,y)=-(y\lg{a}+(1-y)\lg(1-a))$。整个从参数$w$，$b$推导到损失函数值的过程被称为**正向传播(Forward Propagation)**，而我们现在要做的，是根据损失函数反过来对参数求偏导，这个过程叫**反向传播(Backward Propagation)**:
 
 &emsp; $$ da = \frac{dL}{da} = -\frac{y}{a}+\frac{1-y}{1-a} $$
 
@@ -131,11 +131,17 @@ $$
 
 此时x的个数称为了输入矩阵的一部分，我们将向量化后得到的输入矩阵称为X，对应的，将向量化后得到的a,z均替换为大写，再结合numpy，整个流程变得简洁且高效:
 
+
 Z = $w^TX+b$ = np.dot(w.T,X)+b
+
 A = $\sigma(Z)$
-dZ = A-Y
-dw = $\frac{1}{m}$XdZ.T = np.dot(X, dZ.T)/m
-db = $\frac{1}{m}$np.sum(dZ)
+
+$dZ$ = A-Y
+
+$dw$ = $\frac{1}{m}$XdZ.T = np.dot(X, dZ.T)/m
+
+$db$ = $\frac{1}{m}$np.sum(dZ)
+
 
 ### 二. 神经网络
 
