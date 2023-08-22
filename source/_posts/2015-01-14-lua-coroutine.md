@@ -20,6 +20,8 @@ tags:
 
 等说法，也就比较好理解了。本文主要简单介绍下Lua协程。
 
+<!--more-->
+
 ### Lua协程
 
 Lua协程的相关函数封装在coroutine中，对应的 C API为`lua_newthread`，`lua_resume`等。Lua文档中的thread和coroutine是一个概念，但与操作系统的线程是两个东西。

@@ -34,6 +34,8 @@ Actor模型，又叫参与者模型，其"一切皆参与者(Actor)"的理念与
 
 Erlang作为最早的Actor模型实践者，同时也是Actor模型的推广者和标杆。Erlang实现了完整的轻量级Actor(Erlang Process)，包括位置透明性、异步交互、基于规约的公平调度器等。使得它在并发和分布式方面有得天独厚的优势。
 
+<!--more-->
+
 除此之外，Erlang OTP还在Actor模型的基础上，扩展了容错和热更两大杀手级工业特性: 容错和热更。
 
 Erlang 热更我在[这里](https://wudaijun.com/2015/04/erlang-hotcode/)有提到，Erlang热更是非常完备成熟的，配合`gen_server State`和FP，让"永不停服"成为了可能。
