@@ -15,6 +15,8 @@ SLG游戏大量的运算和逻辑都在服务器，线上较易出现各种BUG�
 
 前两种方案与语言无关，且与具体架构和业务强相关，不在这里展开，本文主要介绍两种基于[Go Plugin](https://pkg.go.dev/plugin)的Golang代码热修复技术。
 
+<!--more-->
+
 #### plugin package swap
 
 该方案的思路是，将业务package编译为plugin，动态加载和替换，再通过`plugin.Lookup`来动态查找和使用函数。Go Plugin从2016年发布以来一直不温不火，Go官方对Plugin的维护升级更谈不上上心(两者互为因果)，对于大部分开发者而言，面临Plugin的诸多限制，还是要花一些时间踩坑的:
